@@ -1,11 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = () => {
     // Aquí implementarías tu lógica de login
@@ -17,10 +19,16 @@ export default function LoginScreen() {
       colors={['#5BA9B8', '#87CEBD', '#B8D896']}
       style={styles.container}
     >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
       >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         {/* Decoraciones superiores - Nubes y estrellas */}
         <View style={styles.decorationTop}>
           <View style={styles.cloudLeft}>
@@ -70,14 +78,26 @@ export default function LoginScreen() {
           />
           
           <Text style={styles.label}>CONTRASEÑA</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Contraseña"
-            placeholderTextColor="#A8D5E2"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              placeholder="Contraseña"
+              placeholderTextColor="#A8D5E2"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity 
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
+            >
+              <Ionicons 
+                name={showPassword ? "eye-off" : "eye"} 
+                size={24} 
+                color="white" 
+              />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Botón INGRESAR */}
@@ -115,12 +135,16 @@ export default function LoginScreen() {
         <Text style={[styles.confetti, { top: 200, left: 80 }]}>🌈</Text>
         <Text style={[styles.confetti, { top: 250, right: 70 }]}>🌈</Text>
       </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
   },
   scrollContent: {
@@ -240,6 +264,26 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     fontSize: 16,
     color: 'white',
+  },
+  passwordContainer: {
+    width: '100%',
+    height: 50,
+    backgroundColor: '#6BCDDD',
+    borderRadius: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  passwordInput: {
+    flex: 1,
+    height: 50,
+    fontSize: 16,
+    color: 'white',
+  },
+  eyeIcon: {
+    padding: 5,
+    marginLeft: 10,
   },
   button: {
     width: '80%',
