@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { signOut, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { EmailAuthProvider, reauthenticateWithCredential, signOut, updatePassword, updateProfile } from 'firebase/auth';
 import React, { useState } from 'react';
 import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { auth } from '../config/firebase';
-import { updateUser } from '../services/database';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { updateUser } from '../services/database';
 
 interface HeaderProps {
   title: string;
@@ -61,23 +61,38 @@ export default function Header({
       setLoading(true);
       const user = auth.currentUser;
       
-      if (user) {
-        // Actualizar nombre en Firebase Auth
-        await updateProfile(user, {
-          displayName: newName.trim()
-        });
-
-        // Actualizar nombre en Firestore
-        await updateUser(user.uid, { name: newName.trim() });
-
-        Alert.alert('✅ Éxito', 'Tu nombre ha sido actualizado correctamente');
-        speakText('Nombre actualizado exitosamente');
-        setShowChangeNameModal(false);
-        setNewName('');
+      if (!user) {
+        Alert.alert('Error', 'No hay un usuario autenticado');
+        return;
       }
+
+      // Actualizar nombre en Firebase Auth
+      await updateProfile(user, {
+        displayName: newName.trim()
+      });
+
+      // Actualizar nombre en Firestore (se creará si no existe)
+      await updateUser(user.uid, { 
+        name: newName.trim(),
+        email: user.email || ''
+      });
+
+      Alert.alert('✅ Éxito', 'Tu nombre ha sido actualizado correctamente');
+      speakText('Nombre actualizado exitosamente');
+      setShowChangeNameModal(false);
+      setNewName('');
     } catch (error: any) {
       console.error('Error al cambiar nombre:', error);
-      Alert.alert('Error', 'No se pudo actualizar el nombre. Intenta de nuevo.');
+      
+      let errorMessage = 'No se pudo actualizar el nombre. Intenta de nuevo.';
+      
+      if (error.code === 'permission-denied') {
+        errorMessage = 'No tienes permiso para actualizar tu perfil. Contacta al administrador.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

@@ -89,7 +89,8 @@ export const createUser = async (userId: string, userData: Omit<User, 'id'>): Pr
  */
 export const updateUser = async (userId: string, userData: Partial<User>): Promise<void> => {
   try {
-    await updateDoc(doc(db, 'users', userId), userData);
+    // Usar setDoc con merge para crear el documento si no existe
+    await setDoc(doc(db, 'users', userId), userData, { merge: true });
   } catch (error) {
     console.error('Error updating user:', error);
     throw error;
