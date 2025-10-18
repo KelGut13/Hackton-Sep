@@ -2,11 +2,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AccessibilityMenu from '../../components/AccessibilityMenu';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 export default function WelcomeScreen() {
+  const { getAccessibleColors, getFontSize, speakText } = useAccessibility();
+  const colors = getAccessibleColors();
+  const fontSizes = getFontSize();
+
   return (
     <LinearGradient
-      colors={['#5BA9B8', '#87CEBD', '#B8D896']}
+      colors={colors.isHighContrast 
+        ? [colors.background, colors.background] 
+        : ['#5BA9B8', '#87CEBD', '#B8D896']
+      }
       style={styles.container}
     >
       {/* Decoraciones superiores - Nubes y estrellas */}
@@ -30,15 +39,19 @@ export default function WelcomeScreen() {
       {/* Contenido central */}
       <View style={styles.content}>
         {/* Logo KidiQuo con borde */}
-        <View style={styles.logoBorder}>
+        <View style={[styles.logoBorder, { borderColor: colors.primary }]}>
           <View style={styles.logoContainer}>
-            <Text style={styles.logoText}>
-              <Text style={styles.logoKidi}>Kidi</Text>
-              <Text style={styles.logoQ}>Q</Text>
-              <Text style={styles.logoUo}>uo</Text>
+            <Text 
+              style={[styles.logoText, { fontSize: fontSizes.title }]}
+              accessibilityRole="header"
+              accessibilityLabel="KidiQuo - Aplicación educativa"
+            >
+              <Text style={[styles.logoKidi, { color: colors.primary }]}>Kidi</Text>
+              <Text style={[styles.logoQ, { color: colors.secondary }]}>Q</Text>
+              <Text style={[styles.logoUo, { color: colors.secondary }]}>uo</Text>
             </Text>
             <View style={styles.magnifyingGlass}>
-              <View style={styles.magnifyingCircle}>
+              <View style={[styles.magnifyingCircle, { backgroundColor: colors.secondary }]}>
                 <Text style={styles.smiley}>😊</Text>
               </View>
             </View>
@@ -48,17 +61,39 @@ export default function WelcomeScreen() {
         {/* Botones */}
         <View style={styles.buttonsContainer}>
           <TouchableOpacity 
-            style={styles.button}
-            onPress={() => router.push('/(auth)/login')}
+            style={[styles.button, { backgroundColor: colors.buttonBg }]}
+            onPress={() => {
+              speakText("Ir a iniciar sesión");
+              router.push('/(auth)/login');
+            }}
+            accessibilityLabel="Botón para iniciar sesión"
+            accessibilityHint="Toca para ir a la pantalla de inicio de sesión"
+            accessibilityRole="button"
           >
-            <Text style={styles.buttonText}>INGRESAR</Text>
+            <Text style={[styles.buttonText, { 
+              color: colors.buttonText,
+              fontSize: fontSizes.button 
+            }]}>
+              INGRESAR
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.button}
-            onPress={() => router.push('/(auth)/register')}
+            style={[styles.button, { backgroundColor: colors.buttonBg }]}
+            onPress={() => {
+              speakText("Ir a registro");
+              router.push('/(auth)/register');
+            }}
+            accessibilityLabel="Botón para registrarse"
+            accessibilityHint="Toca para ir a la pantalla de registro"
+            accessibilityRole="button"
           >
-            <Text style={styles.buttonText}>REGISTRARSE</Text>
+            <Text style={[styles.buttonText, { 
+              color: colors.buttonText,
+              fontSize: fontSizes.button 
+            }]}>
+              REGISTRARSE
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -91,6 +126,8 @@ export default function WelcomeScreen() {
       <Text style={[styles.confetti, { top: 250, right: 50 }]}>🌈</Text>
       <Text style={[styles.confetti, { bottom: 200, left: 20 }]}>⭐</Text>
       <Text style={[styles.confetti, { bottom: 250, right: 30 }]}>⭐</Text>
+      
+      <AccessibilityMenu />
     </LinearGradient>
   );
 }

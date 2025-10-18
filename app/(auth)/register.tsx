@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import * as Speech from 'expo-speech';
+import React, { useEffect, useState } from 'react';
+import { AccessibilityInfo, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -11,6 +12,13 @@ export default function RegisterScreen() {
   const [role, setRole] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  
+  // Estados para accesibilidad
+  const [highContrast, setHighContrast] = useState(false);
+  const [colorBlindMode, setColorBlindMode] = useState(false);
+  const [fontSize, setFontSize] = useState('normal'); // 'small', 'normal', 'large'
+  const [showAccessibilityMenu, setShowAccessibilityMenu] = useState(false);
+  const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
 
   const roles = [
     { label: 'Alumno', value: 'student' },
@@ -19,19 +27,118 @@ export default function RegisterScreen() {
 
   const handleRegister = () => {
     // Aquí implementarías tu lógica de registro
+    if (screenReaderEnabled) {
+      Speech.speak("Registrando usuario, por favor espera");
+    }
     router.replace('/(tabs)'); // Navega a la página principal después del registro
   };
 
   const selectRole = (selectedRole: { label: string; value: string }) => {
     setRole(selectedRole.label);
     setShowRoleModal(false);
+    if (screenReaderEnabled) {
+      Speech.speak(`Rol seleccionado: ${selectedRole.label}`);
+    }
   };
+
+  // Función para leer texto en voz alta
+  const speakText = (text: string) => {
+    if (screenReaderEnabled) {
+      Speech.speak(text, {
+        language: 'es-ES', // Español
+        pitch: 1.0,
+        rate: 0.8, // Velocidad más lenta para mejor comprensión
+      });
+    }
+  };
+
+  // Detectar si el lector de pantalla del sistema está activo
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      try {
+        const isEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+        setScreenReaderEnabled(isEnabled);
+      } catch (error) {
+        console.log('Error checking screen reader:', error);
+      }
+    };
+    
+    checkScreenReader();
+    
+    // Listener para cambios en el lector de pantalla
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setScreenReaderEnabled
+    );
+
+    return () => subscription?.remove();
+  }, []);
+
+  // Leer cuando se abra el menú de accesibilidad
+  useEffect(() => {
+    if (showAccessibilityMenu && screenReaderEnabled) {
+      speakText("Menú de opciones de accesibilidad abierto. Aquí puedes configurar alto contraste, modo daltónico, lector de pantalla y tamaño de texto.");
+    }
+  }, [showAccessibilityMenu]);
+
+  // Funciones de accesibilidad
+  const getAccessibleColors = () => {
+    if (highContrast) {
+      return {
+        background: ['#000000', '#1a1a1a', '#333333'],
+        inputBg: '#FFFFFF',
+        inputText: '#000000',
+        buttonBg: '#FFFFFF',
+        buttonText: '#000000',
+        labelText: '#FFFFFF'
+      };
+    }
+    if (colorBlindMode) {
+      return {
+        background: ['#4A90E2', '#7BB3F0', '#A8D5F2'], // Colores amigables para daltónicos
+        inputBg: '#E8F4FD',
+        inputText: '#2C5282',
+        buttonBg: '#2C5282',
+        buttonText: '#FFFFFF',
+        labelText: '#FFFFFF'
+      };
+    }
+    return {
+      background: ['#5BA9B8', '#87CEBD', '#B8D896'],
+      inputBg: '#6BCDDD',
+      inputText: 'white',
+      buttonBg: '#5BA9D0',
+      buttonText: 'white',
+      labelText: 'white'
+    };
+  };
+
+  const getFontSize = () => {
+    switch (fontSize) {
+      case 'small': return { base: 14, title: 20, button: 16, label: 12 };
+      case 'large': return { base: 20, title: 32, button: 24, label: 18 };
+      default: return { base: 16, title: 24, button: 20, label: 14 };
+    }
+  };
+
+  const colors = getAccessibleColors();
+  const fontSizes = getFontSize();
 
   return (
     <LinearGradient
-      colors={['#5BA9B8', '#87CEBD', '#B8D896']}
+      colors={colors.background as [string, string, string]}
       style={styles.container}
     >
+      {/* Botón de accesibilidad flotante */}
+      <TouchableOpacity 
+        style={styles.accessibilityButton}
+        onPress={() => setShowAccessibilityMenu(true)}
+        accessibilityLabel="Abrir menú de accesibilidad"
+        accessibilityHint="Abre las opciones de accesibilidad como alto contraste y modo daltónico"
+        accessibilityRole="button"
+      >
+        <Ionicons name="accessibility" size={24} color="white" />
+      </TouchableOpacity>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -75,71 +182,124 @@ export default function RegisterScreen() {
           </View>
 
           {/* Título REGISTRARSE */}
-          <Text style={styles.title}>REGISTRARSE</Text>
+          <Text 
+            style={[styles.title, { 
+              color: colors.labelText, 
+              fontSize: fontSizes.title 
+            }]}
+            accessibilityRole="header"
+          >
+            REGISTRARSE
+          </Text>
 
           {/* Formulario */}
           <View style={styles.formContainer}>
-            <Text style={styles.label}>NOMBRE</Text>
+            <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>NOMBRE</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { 
+                backgroundColor: colors.inputBg, 
+                color: colors.inputText,
+                fontSize: fontSizes.base 
+              }]}
               placeholder="Nombre Completo"
-              placeholderTextColor="#A8D5E2"
+              placeholderTextColor={highContrast ? "#666666" : "#A8D5E2"}
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
+              accessibilityLabel="Campo de nombre completo"
+              accessibilityHint="Ingresa tu nombre completo"
+              accessibilityRole="text"
+              onFocus={() => speakText("Campo de nombre completo")}
             />
 
-            <Text style={styles.label}>CORREO</Text>
+            <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>CORREO</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { 
+                backgroundColor: colors.inputBg, 
+                color: colors.inputText,
+                fontSize: fontSizes.base 
+              }]}
               placeholder="Correo Electronico"
-              placeholderTextColor="#A8D5E2"
+              placeholderTextColor={highContrast ? "#666666" : "#A8D5E2"}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              accessibilityLabel="Campo de correo electrónico"
+              accessibilityHint="Ingresa tu dirección de correo electrónico"
+              accessibilityRole="text"
+              onFocus={() => speakText("Campo de correo electrónico")}
             />
             
-            <Text style={styles.label}>CONTRASEÑA</Text>
-            <View style={styles.passwordContainer}>
+            <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>CONTRASEÑA</Text>
+            <View style={[styles.passwordContainer, { backgroundColor: colors.inputBg }]}>
               <TextInput
-                style={styles.passwordInput}
+                style={[styles.passwordInput, { 
+                  color: colors.inputText,
+                  fontSize: fontSizes.base 
+                }]}
                 placeholder="Contraseña"
-                placeholderTextColor="#A8D5E2"
+                placeholderTextColor={highContrast ? "#666666" : "#A8D5E2"}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
+                accessibilityLabel="Campo de contraseña"
+                accessibilityHint="Ingresa tu contraseña"
+                accessibilityRole="text"
+                onFocus={() => speakText("Campo de contraseña")}
               />
               <TouchableOpacity 
                 style={styles.eyeIcon}
                 onPress={() => setShowPassword(!showPassword)}
+                accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                accessibilityHint={showPassword ? "Toca para ocultar la contraseña" : "Toca para mostrar la contraseña"}
+                accessibilityRole="button"
               >
                 <Ionicons 
                   name={showPassword ? "eye-off" : "eye"} 
                   size={24} 
-                  color="white" 
+                  color={colors.inputText} 
                 />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.label}>ROL</Text>
+            <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>ROL</Text>
             <TouchableOpacity 
-              style={styles.roleSelector}
-              onPress={() => setShowRoleModal(true)}
+              style={[styles.roleSelector, { backgroundColor: colors.inputBg }]}
+              onPress={() => {
+                setShowRoleModal(true);
+                speakText("Abriendo selector de rol");
+              }}
+              accessibilityLabel="Selector de rol"
+              accessibilityHint={`Rol actual: ${role || 'Ninguno seleccionado'}. Toca para cambiar`}
+              accessibilityRole="button"
             >
-              <Text style={styles.roleSelectorText}>
+              <Text style={[styles.roleSelectorText, { 
+                color: colors.inputText,
+                fontSize: fontSizes.base 
+              }]}>
                 {role || 'Seleccionar rol'}
               </Text>
-              <Ionicons name="chevron-down" size={24} color="white" />
+              <Ionicons name="chevron-down" size={24} color={colors.inputText} />
             </TouchableOpacity>
           </View>
 
           {/* Botón REGISTRARSE */}
           <TouchableOpacity 
-            style={styles.button}
+            style={[styles.button, { 
+              backgroundColor: colors.buttonBg 
+            }]}
             onPress={handleRegister}
+            accessibilityLabel="Botón de registrarse"
+            accessibilityHint="Toca para crear tu cuenta con la información ingresada"
+            accessibilityRole="button"
           >
-            <Text style={styles.buttonText}>REGISTRARSE</Text>
+            <Text style={[styles.buttonText, { 
+              color: colors.buttonText,
+              fontSize: fontSizes.button 
+            }]}>
+              REGISTRARSE
+            </Text>
           </TouchableOpacity>
 
           {/* Decoraciones inferiores - Árboles y flores */}
@@ -186,6 +346,8 @@ export default function RegisterScreen() {
                 key={index}
                 style={styles.roleOption}
                 onPress={() => selectRole(roleOption)}
+                accessibilityLabel={`Seleccionar rol: ${roleOption.label}`}
+                accessibilityRole="button"
               >
                 <Text style={styles.roleOptionText}>{roleOption.label}</Text>
               </TouchableOpacity>
@@ -193,9 +355,156 @@ export default function RegisterScreen() {
             <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => setShowRoleModal(false)}
+              accessibilityLabel="Cancelar selección de rol"
+              accessibilityRole="button"
             >
               <Text style={styles.cancelButtonText}>Cancelar</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de accesibilidad */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showAccessibilityMenu}
+        onRequestClose={() => setShowAccessibilityMenu(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { minHeight: 400 }]}>
+            <Text style={[styles.modalTitle, { fontSize: fontSizes.title }]}>Opciones de Accesibilidad</Text>
+            
+            {/* Alto contraste */}
+            <TouchableOpacity
+              style={[styles.accessibilityOption, highContrast && styles.selectedOption]}
+              onPress={() => {
+                setHighContrast(!highContrast);
+                speakText(highContrast ? "Alto contraste desactivado" : "Alto contraste activado");
+              }}
+              accessibilityLabel={`Alto contraste: ${highContrast ? 'Activado' : 'Desactivado'}`}
+              accessibilityHint="Cambia a colores de alto contraste para mejor visibilidad"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: highContrast }}
+            >
+              <Ionicons name="contrast" size={24} color={highContrast ? "white" : "#333"} />
+              <Text style={[styles.accessibilityOptionText, { color: highContrast ? "white" : "#333" }]}>
+                Alto Contraste
+              </Text>
+              <Ionicons 
+                name={highContrast ? "checkmark-circle" : "ellipse-outline"} 
+                size={24} 
+                color={highContrast ? "white" : "#333"} 
+              />
+            </TouchableOpacity>
+
+            {/* Modo daltónico */}
+            <TouchableOpacity
+              style={[styles.accessibilityOption, colorBlindMode && styles.selectedOption]}
+              onPress={() => {
+                setColorBlindMode(!colorBlindMode);
+                speakText(colorBlindMode ? "Modo daltónico desactivado" : "Modo daltónico activado");
+              }}
+              accessibilityLabel={`Modo daltónico: ${colorBlindMode ? 'Activado' : 'Desactivado'}`}
+              accessibilityHint="Activa colores amigables para personas con daltonismo"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: colorBlindMode }}
+            >
+              <Ionicons name="eye" size={24} color={colorBlindMode ? "white" : "#333"} />
+              <Text style={[styles.accessibilityOptionText, { color: colorBlindMode ? "white" : "#333" }]}>
+                Modo Daltónico
+              </Text>
+              <Ionicons 
+                name={colorBlindMode ? "checkmark-circle" : "ellipse-outline"} 
+                size={24} 
+                color={colorBlindMode ? "white" : "#333"} 
+              />
+            </TouchableOpacity>
+
+            {/* Lector de pantalla */}
+            <TouchableOpacity
+              style={[styles.accessibilityOption, screenReaderEnabled && styles.selectedOption]}
+              onPress={() => {
+                const newState = !screenReaderEnabled;
+                setScreenReaderEnabled(newState);
+                if (newState) {
+                  Speech.speak("Lector de pantalla activado. Los elementos serán leídos en voz alta.");
+                } else {
+                  Speech.speak("Lector de pantalla desactivado");
+                }
+              }}
+              accessibilityLabel={`Lector de pantalla: ${screenReaderEnabled ? 'Activado' : 'Desactivado'}`}
+              accessibilityHint="Activa la lectura en voz alta de los elementos de la pantalla"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: screenReaderEnabled }}
+            >
+              <Ionicons name="volume-high" size={24} color={screenReaderEnabled ? "white" : "#333"} />
+              <Text style={[styles.accessibilityOptionText, { color: screenReaderEnabled ? "white" : "#333" }]}>
+                Lector de Pantalla
+              </Text>
+              <Ionicons 
+                name={screenReaderEnabled ? "checkmark-circle" : "ellipse-outline"} 
+                size={24} 
+                color={screenReaderEnabled ? "white" : "#333"} 
+              />
+            </TouchableOpacity>
+
+            {/* Tamaño de fuente */}
+            <View style={styles.fontSizeContainer}>
+              <Text style={[styles.accessibilityLabel, { fontSize: fontSizes.base }]}>Tamaño de Texto:</Text>
+              <View style={styles.fontSizeButtons}>
+                {['small', 'normal', 'large'].map((size) => (
+                  <TouchableOpacity
+                    key={size}
+                    style={[
+                      styles.fontSizeButton, 
+                      fontSize === size && styles.selectedFontButton
+                    ]}
+                    onPress={() => setFontSize(size)}
+                    accessibilityLabel={`Tamaño de texto: ${size === 'small' ? 'Pequeño' : size === 'normal' ? 'Normal' : 'Grande'}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: fontSize === size }}
+                  >
+                    <Text style={[
+                      styles.fontSizeButtonText, 
+                      fontSize === size && styles.selectedFontButtonText,
+                      { fontSize: size === 'small' ? 12 : size === 'large' ? 20 : 16 }
+                    ]}>
+                      {size === 'small' ? 'A' : size === 'normal' ? 'A' : 'A'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                setShowAccessibilityMenu(false);
+                speakText("Menú de accesibilidad cerrado");
+              }}
+              accessibilityLabel="Cerrar menú de accesibilidad"
+              accessibilityRole="button"
+            >
+              <Text style={styles.cancelButtonText}>Cerrar</Text>
+            </TouchableOpacity>
+
+            {/* Botón para detener la voz */}
+            {screenReaderEnabled && (
+              <TouchableOpacity
+                style={[styles.accessibilityOption, { backgroundColor: '#ff6b6b' }]}
+                onPress={() => Speech.stop()}
+                accessibilityLabel="Detener lectura en voz alta"
+                accessibilityHint="Detiene la lectura actual del lector de pantalla"
+                accessibilityRole="button"
+              >
+                <Ionicons name="stop" size={24} color="white" />
+                <Text style={[styles.accessibilityOptionText, { color: 'white' }]}>
+                  Detener Voz
+                </Text>
+                <Ionicons name="stop-circle" size={24} color="white" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </Modal>
@@ -465,5 +774,78 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#666',
     fontSize: 16,
+  },
+  // Estilos de accesibilidad
+  accessibilityButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 50,
+    height: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  accessibilityOption: {
+    width: '100%',
+    padding: 15,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectedOption: {
+    backgroundColor: '#4A90E2',
+  },
+  accessibilityOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+    marginLeft: 15,
+  },
+  accessibilityLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  fontSizeContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  fontSizeButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  fontSizeButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedFontButton: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#2C5AA0',
+  },
+  fontSizeButtonText: {
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  selectedFontButtonText: {
+    color: 'white',
   },
 });

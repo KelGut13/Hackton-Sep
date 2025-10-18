@@ -3,22 +3,30 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import AccessibilityMenu from '../../components/AccessibilityMenu';
+import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
+  const { getAccessibleColors, getFontSize, speakText } = useAccessibility();
+  const colors = getAccessibleColors();
+  const fontSizes = getFontSize();
+
   const handleLogin = () => {
     // Aquí implementarías tu lógica de login
+    speakText("Iniciando sesión, por favor espera");
     router.replace('/(tabs)'); // Navega a la página principal después del login
   };
 
   return (
     <LinearGradient
-      colors={['#5BA9B8', '#87CEBD', '#B8D896']}
+      colors={colors.background as [string, string, string]}
       style={styles.container}
     >
+      <AccessibilityMenu />
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -62,39 +70,65 @@ export default function LoginScreen() {
         </View>
 
         {/* Título INGRESAR */}
-        <Text style={styles.title}>INGRESAR</Text>
+        <Text 
+          style={[styles.title, { 
+            color: colors.labelText, 
+            fontSize: fontSizes.title 
+          }]}
+          accessibilityRole="header"
+        >
+          INGRESAR
+        </Text>
 
         {/* Formulario */}
         <View style={styles.formContainer}>
-          <Text style={styles.label}>CORREO</Text>
+          <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>CORREO</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { 
+              backgroundColor: colors.inputBg, 
+              color: colors.inputText,
+              fontSize: fontSizes.base 
+            }]}
             placeholder="Correo Electronico"
             placeholderTextColor="#A8D5E2"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
+            accessibilityLabel="Campo de correo electrónico"
+            accessibilityHint="Ingresa tu dirección de correo electrónico"
+            accessibilityRole="text"
+            onFocus={() => speakText("Campo de correo electrónico")}
           />
           
-          <Text style={styles.label}>CONTRASEÑA</Text>
-          <View style={styles.passwordContainer}>
+          <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>CONTRASEÑA</Text>
+          <View style={[styles.passwordContainer, { backgroundColor: colors.inputBg }]}>
             <TextInput
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { 
+                color: colors.inputText,
+                fontSize: fontSizes.base 
+              }]}
               placeholder="Contraseña"
               placeholderTextColor="#A8D5E2"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
+              accessibilityLabel="Campo de contraseña"
+              accessibilityHint="Ingresa tu contraseña"
+              accessibilityRole="text"
+              onFocus={() => speakText("Campo de contraseña")}
             />
             <TouchableOpacity 
               style={styles.eyeIcon}
               onPress={() => setShowPassword(!showPassword)}
+              accessibilityLabel={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              accessibilityHint={showPassword ? "Toca para ocultar la contraseña" : "Toca para mostrar la contraseña"}
+              accessibilityRole="button"
             >
               <Ionicons 
                 name={showPassword ? "eye-off" : "eye"} 
                 size={24} 
-                color="white" 
+                color={colors.inputText} 
               />
             </TouchableOpacity>
           </View>
@@ -102,10 +136,20 @@ export default function LoginScreen() {
 
         {/* Botón INGRESAR */}
         <TouchableOpacity 
-          style={styles.button}
+          style={[styles.button, { 
+            backgroundColor: colors.buttonBg 
+          }]}
           onPress={handleLogin}
+          accessibilityLabel="Botón de iniciar sesión"
+          accessibilityHint="Toca para iniciar sesión con las credenciales ingresadas"
+          accessibilityRole="button"
         >
-          <Text style={styles.buttonText}>INGRESAR</Text>
+          <Text style={[styles.buttonText, { 
+            color: colors.buttonText,
+            fontSize: fontSizes.button 
+          }]}>
+            INGRESAR
+          </Text>
         </TouchableOpacity>
 
         {/* Decoraciones inferiores - Árboles y flores */}
@@ -134,8 +178,26 @@ export default function LoginScreen() {
         <Text style={[styles.confetti, { top: 150, right: 60 }]}>🎨</Text>
         <Text style={[styles.confetti, { top: 200, left: 80 }]}>🌈</Text>
         <Text style={[styles.confetti, { top: 250, right: 70 }]}>🌈</Text>
+
+        {/* Enlace de registro */}
+        <TouchableOpacity 
+          style={styles.linkContainer}
+          onPress={() => router.push('/(auth)/register')}
+          accessibilityLabel="Ir a registro"
+          accessibilityHint="Toca para ir a la pantalla de registro si no tienes cuenta"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.linkText, { 
+            color: colors.labelText,
+            fontSize: fontSizes.small 
+          }]}>
+            ¿No tienes cuenta? <Text style={[styles.linkHighlight, { color: colors.buttonBg }]}>Regístrate</Text>
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
       </KeyboardAvoidingView>
+      
+      <AccessibilityMenu />
     </LinearGradient>
   );
 }
@@ -337,5 +399,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     fontSize: 16,
     opacity: 0.6,
+  },
+  linkContainer: {
+    marginTop: 30,
+    alignItems: 'center',
+  },
+  linkText: {
+    color: 'white',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  linkHighlight: {
+    fontWeight: 'bold',
+    textDecorationLine: 'underline',
   },
 });
