@@ -210,14 +210,48 @@ export const getUserProgress = async (userId: string): Promise<any[]> => {
  * Obtener todos los roles disponibles
  */
 export const getRoles = async (): Promise<Role[]> => {
+  console.log('🌐 API getRoles(): Iniciando llamada a Firebase Firestore...');
+  console.log('📍 Colección objetivo: "roles"');
+  
   try {
     const querySnapshot = await getDocs(collection(db, 'roles'));
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Role[];
-  } catch (error) {
-    console.error('Error getting roles:', error);
+    
+    console.log('✅ API getRoles(): Respuesta de Firebase recibida');
+    console.log('📊 Cantidad de documentos encontrados:', querySnapshot.size);
+    
+    if (querySnapshot.empty) {
+      console.warn('⚠️ API getRoles(): La colección "roles" está VACÍA');
+      console.log('💡 Solución: Ve a la pestaña Firebase y presiona "Inicializar Roles"');
+    }
+    
+    const roles = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      console.log(`📄 Documento procesado:`, {
+        id: doc.id,
+        name: data.name,
+        value: data.value
+      });
+      return {
+        id: doc.id,
+        ...data
+      };
+    }) as Role[];
+    
+    console.log('📦 API getRoles(): Total de roles procesados:', roles.length);
+    console.log('📋 Roles completos:', roles);
+    
+    return roles;
+  } catch (error: any) {
+    console.error('❌ API getRoles(): ERROR al obtener roles');
+    console.error('🔴 Código de error:', error.code);
+    console.error('🔴 Mensaje:', error.message);
+    console.error('🔴 Error completo:', error);
+    
+    if (error.code === 'permission-denied') {
+      console.error('🔒 ERROR DE PERMISOS: Las reglas de Firestore están bloqueando el acceso');
+      console.log('💡 Solución: Configura las reglas en Firebase Console > Firestore > Reglas');
+    }
+    
     throw error;
   }
 };
@@ -258,13 +292,20 @@ export const createRole = async (roleData: Omit<Role, 'id'>): Promise<string> =>
  * Inicializar roles por defecto (ejecutar una sola vez)
  */
 export const initializeDefaultRoles = async (): Promise<void> => {
+  console.log('🚀 API initializeDefaultRoles(): Iniciando inicialización de roles...');
+  
   try {
     // Verificar si ya existen roles
+    console.log('🔍 Verificando si ya existen roles...');
     const existingRoles = await getRoles();
+    
     if (existingRoles.length > 0) {
-      console.log('Los roles ya están inicializados');
+      console.log('✅ Los roles ya están inicializados');
+      console.log('📋 Roles existentes:', existingRoles.map(r => r.name).join(', '));
       return;
     }
+
+    console.log('📝 No hay roles. Creando roles por defecto...');
 
     // Crear roles por defecto
     const defaultRoles = [
@@ -284,13 +325,19 @@ export const initializeDefaultRoles = async (): Promise<void> => {
       }
     ];
 
+    console.log(`➕ Creando ${defaultRoles.length} roles...`);
+    
     for (const role of defaultRoles) {
-      await createRole(role);
+      console.log(`📌 Creando rol: ${role.name}...`);
+      const roleId = await createRole(role);
+      console.log(`✅ Rol "${role.name}" creado con ID: ${roleId}`);
     }
 
-    console.log('Roles inicializados correctamente');
-  } catch (error) {
-    console.error('Error initializing default roles:', error);
+    console.log('🎉 ¡Roles inicializados correctamente!');
+  } catch (error: any) {
+    console.error('❌ ERROR al inicializar roles:', error);
+    console.error('🔴 Código:', error.code);
+    console.error('🔴 Mensaje:', error.message);
     throw error;
   }
 };
