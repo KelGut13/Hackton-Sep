@@ -23,7 +23,17 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro",
+      "lang": "es",
+      "name": "EduPlay - Aplicación Educativa",
+      "shortName": "EduPlay",
+      "description": "Aplicación educativa interactiva para niños desarrollada con Expo",
+      "startUrl": "/",
+      "display": "standalone",
+      "orientation": "portrait",
+      "themeColor": "#6366f1",
+      "backgroundColor": "#ffffff"
     },
     "plugins": [
       "expo-router",
