@@ -6,6 +6,7 @@ import {
     getDocs,
     orderBy,
     query,
+    setDoc,
     updateDoc,
     where
 } from 'firebase/firestore';
@@ -64,15 +65,16 @@ export const getUser = async (userId: string): Promise<User | null> => {
 };
 
 /**
- * Crear un nuevo usuario
+ * Crear un nuevo usuario con UID específico
  */
-export const createUser = async (userData: Omit<User, 'id'>): Promise<string> => {
+export const createUser = async (userId: string, userData: Omit<User, 'id'>): Promise<string> => {
   try {
-    const docRef = await addDoc(collection(db, 'users'), {
+    // Usar el UID de Authentication como ID del documento en Firestore
+    await setDoc(doc(db, 'users', userId), {
       ...userData,
       createdAt: new Date()
     });
-    return docRef.id;
+    return userId;
   } catch (error) {
     console.error('Error creating user:', error);
     throw error;

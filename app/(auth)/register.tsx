@@ -128,8 +128,11 @@ export default function RegisterScreen() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const userId = userCredential.user.uid;
 
+      console.log('🔐 Usuario creado en Authentication:', userId);
+      console.log('👤 Rol seleccionado:', selectedRole.name, '(ID:', selectedRole.id, ')');
+
       // 2. Guardar datos adicionales en Firestore
-      await createUser({
+      await createUser(userId, {
         name: name.trim(),
         email: email.trim(),
         createdAt: new Date(),
@@ -142,6 +145,8 @@ export default function RegisterScreen() {
           screenReaderEnabled
         }
       });
+
+      console.log('✅ Datos guardados en Firestore con roleId:', selectedRole.id);
 
       // 3. Éxito - navegar a la app
       speakText('Usuario registrado exitosamente. Bienvenido a EduPlay');
