@@ -2,7 +2,7 @@
 // import FirebaseTest from '@/components/FirebaseTest';
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 export default function FirebaseTab() {
   return (
