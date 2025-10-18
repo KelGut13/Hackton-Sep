@@ -1,11 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Animated,
-  Dimensions,
-  PanResponder,
-  StyleSheet,
-  TouchableOpacity,
+    Animated,
+    Dimensions,
+    PanResponder,
+    StyleSheet,
+    TouchableOpacity,
 } from 'react-native';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
@@ -35,18 +35,34 @@ export default function GlobalAccessibilityButton({ onPress }: GlobalAccessibili
 
   // Sincronizar la posición del contexto cuando cambie
   useEffect(() => {
-    pan.setValue(buttonPosition);
-    currentPosition.current = buttonPosition;
+    try {
+      pan.setValue(buttonPosition);
+      currentPosition.current = buttonPosition;
+    } catch (error) {
+      console.warn('Error syncing button position:', error);
+    }
   }, [buttonPosition]);
 
   // Listener para rastrear cambios de posición y guardarlos globalmente
   useEffect(() => {
-    const listenerId = pan.addListener((value) => {
-      currentPosition.current = value;
-    });
+    let listenerId: string | undefined;
+    
+    try {
+      listenerId = pan.addListener((value) => {
+        currentPosition.current = value;
+      });
+    } catch (error) {
+      console.warn('Error setting up position listener:', error);
+    }
     
     return () => {
-      pan.removeListener(listenerId);
+      try {
+        if (listenerId) {
+          pan.removeListener(listenerId);
+        }
+      } catch (error) {
+        console.warn('Error removing position listener:', error);
+      }
     };
   }, []);
   
@@ -101,10 +117,18 @@ export default function GlobalAccessibilityButton({ onPress }: GlobalAccessibili
       // Si el movimiento fue mínimo, considerar como tap para abrir el menú
       const distance = Math.sqrt(gestureState.dx * gestureState.dx + gestureState.dy * gestureState.dy);
       if (distance < 10) {
-        onPress();
-        speakText("Menú de accesibilidad abierto");
+        try {
+          onPress();
+          speakText("Menú de accesibilidad abierto");
+        } catch (error) {
+          console.warn('Error opening accessibility menu:', error);
+        }
       } else {
-        speakText("Botón de accesibilidad movido");
+        try {
+          speakText("Botón de accesibilidad movido");
+        } catch (error) {
+          console.warn('Error in speakText:', error);
+        }
       }
       
       // Resetear el estado de arrastre

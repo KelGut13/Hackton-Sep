@@ -2,7 +2,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import AccessibilityMenu from '../../components/AccessibilityMenu';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 export default function WelcomeScreen() {
@@ -126,8 +125,6 @@ export default function WelcomeScreen() {
       <Text style={[styles.confetti, { top: 250, right: 50 }]}>🌈</Text>
       <Text style={[styles.confetti, { bottom: 200, left: 20 }]}>⭐</Text>
       <Text style={[styles.confetti, { bottom: 250, right: 30 }]}>⭐</Text>
-      
-      <AccessibilityMenu />
     </LinearGradient>
   );
 }

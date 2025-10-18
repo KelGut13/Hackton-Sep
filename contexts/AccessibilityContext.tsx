@@ -51,12 +51,16 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
 
   // Función para leer texto en voz alta
   const speakText = (text: string) => {
-    if (screenReaderEnabled) {
-      Speech.speak(text, {
-        language: 'es-ES',
-        pitch: 1.0,
-        rate: 0.8,
-      });
+    try {
+      if (screenReaderEnabled && text && text.trim()) {
+        Speech.speak(text, {
+          language: 'es-ES',
+          pitch: 1.0,
+          rate: 0.8,
+        });
+      }
+    } catch (error) {
+      console.warn('Error en speakText:', error);
     }
   };
 
@@ -101,26 +105,40 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
     }
   };
 
-  // Detectar si el lector de pantalla del sistema está activo
+    // Detectar si el screen reader está habilitado
   useEffect(() => {
+    let subscription: any;
+    
     const checkScreenReader = async () => {
       try {
         const isEnabled = await AccessibilityInfo.isScreenReaderEnabled();
         setScreenReaderEnabled(isEnabled);
       } catch (error) {
-        console.log('Error checking screen reader:', error);
+        console.warn('Error checking screen reader:', error);
+        setScreenReaderEnabled(false);
       }
     };
-    
-    checkScreenReader();
-    
-    // Listener para cambios en el lector de pantalla
-    const subscription = AccessibilityInfo.addEventListener(
-      'screenReaderChanged',
-      setScreenReaderEnabled
-    );
 
-    return () => subscription?.remove();
+    // Verificar estado inicial
+    checkScreenReader();
+
+    // Suscribirse a cambios
+    try {
+      subscription = AccessibilityInfo.addEventListener(
+        'screenReaderChanged',
+        setScreenReaderEnabled
+      );
+    } catch (error) {
+      console.warn('Error setting up screen reader listener:', error);
+    }
+
+    return () => {
+      try {
+        subscription?.remove();
+      } catch (error) {
+        console.warn('Error removing screen reader listener:', error);
+      }
+    };
   }, []);
 
   const value = {

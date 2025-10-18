@@ -1,11 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
-  Animated,
-  Dimensions,
   Modal,
-  PanResponder,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -34,10 +31,14 @@ export default function AccessibilityMenu({ visible, onClose }: AccessibilityMen
 
   const fontSizes = getFontSize();  // Leer cuando se abra el menú de accesibilidad
   useEffect(() => {
-    if (visible && screenReaderEnabled) {
-      speakText("Menú de opciones de accesibilidad abierto. Aquí puedes configurar alto contraste, modo daltónico, lector de pantalla y tamaño de texto.");
+    try {
+      if (visible && screenReaderEnabled) {
+        speakText("Menú de opciones de accesibilidad abierto. Aquí puedes configurar alto contraste, modo daltónico, lector de pantalla y tamaño de texto.");
+      }
+    } catch (error) {
+      console.warn('Error en useEffect del AccessibilityMenu:', error);
     }
-  }, [visible]);
+  }, [visible, screenReaderEnabled, speakText]);
 
   return (
     <Modal

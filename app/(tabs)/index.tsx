@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
@@ -108,7 +109,19 @@ export default function HomeScreen() {
 
   const handleActivityPress = (activity: any) => {
     speakText(`Actividad ${activity.name} ${activity.completed ? 'completada' : 'disponible'}`);
-    // Aquí iría la navegación a la actividad específica
+    
+    // Navegación a actividades específicas
+    if (activity.name === currentTexts.geoSopa || activity.id === 1) {
+      router.push('/activities/geosopa');
+    } else if (activity.name === currentTexts.puntoGo || activity.id === 2) {
+      speakText('PuntoGo próximamente disponible');
+      // router.push('/activities/puntogo');
+    } else if (activity.name === currentTexts.matematico || activity.id === 3) {
+      speakText('P.Matemático próximamente disponible');
+      // router.push('/activities/matematico');
+    } else {
+      speakText('Esta actividad próximamente estará disponible');
+    }
   };
 
   const renderActivity = (activity: any) => (
