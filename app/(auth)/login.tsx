@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import AccessibilityMenu from '../../components/AccessibilityMenu';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 export default function LoginScreen() {
@@ -26,7 +25,6 @@ export default function LoginScreen() {
       colors={colors.background as [string, string, string]}
       style={styles.container}
     >
-      <AccessibilityMenu />
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -196,8 +194,6 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </ScrollView>
       </KeyboardAvoidingView>
-      
-      <AccessibilityMenu />
     </LinearGradient>
   );
 }

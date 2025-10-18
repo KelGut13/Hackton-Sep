@@ -17,7 +17,7 @@ export default function RegisterScreen() {
   const [highContrast, setHighContrast] = useState(false);
   const [colorBlindMode, setColorBlindMode] = useState(false);
   const [fontSize, setFontSize] = useState('normal'); // 'small', 'normal', 'large'
-  const [showAccessibilityMenu, setShowAccessibilityMenu] = useState(false);
+  // Modal de accesibilidad ahora manejado globalmente
   const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
 
   const roles = [
@@ -74,12 +74,7 @@ export default function RegisterScreen() {
     return () => subscription?.remove();
   }, []);
 
-  // Leer cuando se abra el menú de accesibilidad
-  useEffect(() => {
-    if (showAccessibilityMenu && screenReaderEnabled) {
-      speakText("Menú de opciones de accesibilidad abierto. Aquí puedes configurar alto contraste, modo daltónico, lector de pantalla y tamaño de texto.");
-    }
-  }, [showAccessibilityMenu]);
+  // Modal de accesibilidad ahora manejado globalmente
 
   // Funciones de accesibilidad
   const getAccessibleColors = () => {
@@ -129,16 +124,7 @@ export default function RegisterScreen() {
       colors={colors.background as [string, string, string]}
       style={styles.container}
     >
-      {/* Botón de accesibilidad flotante */}
-      <TouchableOpacity 
-        style={styles.accessibilityButton}
-        onPress={() => setShowAccessibilityMenu(true)}
-        accessibilityLabel="Abrir menú de accesibilidad"
-        accessibilityHint="Abre las opciones de accesibilidad como alto contraste y modo daltónico"
-        accessibilityRole="button"
-      >
-        <Ionicons name="accessibility" size={24} color="white" />
-      </TouchableOpacity>
+      {/* Botón de accesibilidad ahora manejado globalmente */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -364,13 +350,7 @@ export default function RegisterScreen() {
         </View>
       </Modal>
 
-      {/* Modal de accesibilidad */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={showAccessibilityMenu}
-        onRequestClose={() => setShowAccessibilityMenu(false)}
-      >
+      {/* Modal de accesibilidad ahora manejado globalmente */}
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { minHeight: 400 }]}>
             <Text style={[styles.modalTitle, { fontSize: fontSizes.title }]}>Opciones de Accesibilidad</Text>
@@ -480,7 +460,7 @@ export default function RegisterScreen() {
             <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => {
-                setShowAccessibilityMenu(false);
+                // Modal cerrado automáticamente por el sistema global
                 speakText("Menú de accesibilidad cerrado");
               }}
               accessibilityLabel="Cerrar menú de accesibilidad"
@@ -507,7 +487,7 @@ export default function RegisterScreen() {
             )}
           </View>
         </View>
-      </Modal>
+
     </LinearGradient>
   );
 }

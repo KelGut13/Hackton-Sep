@@ -1,6 +1,11 @@
 import * as Speech from 'expo-speech';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Dimensions } from 'react-native';
+
+interface ButtonPosition {
+  x: number;
+  y: number;
+}
 
 interface AccessibilityContextType {
   // Estados de accesibilidad
@@ -8,6 +13,10 @@ interface AccessibilityContextType {
   colorBlindMode: boolean;
   fontSize: 'small' | 'normal' | 'large';
   screenReaderEnabled: boolean;
+  
+  // Posición del botón de accesibilidad
+  buttonPosition: ButtonPosition;
+  setButtonPosition: (position: ButtonPosition) => void;
   
   // Funciones para cambiar estados
   setHighContrast: (value: boolean) => void;
@@ -32,6 +41,13 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
   const [colorBlindMode, setColorBlindMode] = useState(false);
   const [fontSize, setFontSize] = useState<'small' | 'normal' | 'large'>('normal');
   const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
+  
+  // Estado para la posición del botón de accesibilidad
+  const screenWidth = Dimensions.get('window').width;
+  const [buttonPosition, setButtonPosition] = useState<ButtonPosition>({
+    x: screenWidth - 70, // 50 (buttonSize) + 20 (margin)
+    y: 50
+  });
 
   // Función para leer texto en voz alta
   const speakText = (text: string) => {
@@ -112,6 +128,8 @@ export function AccessibilityProvider({ children }: AccessibilityProviderProps) 
     colorBlindMode,
     fontSize,
     screenReaderEnabled,
+    buttonPosition,
+    setButtonPosition,
     setHighContrast,
     setColorBlindMode,
     setFontSize,

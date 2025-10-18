@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import AccessibilityMenu from '../../components/AccessibilityMenu';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 export default function HomeScreen() {
@@ -262,8 +261,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Accessibility Menu */}
-        <AccessibilityMenu />
+        {/* Accessibility Menu now managed globally */}
 
         {/* Settings Modal */}
         <Modal

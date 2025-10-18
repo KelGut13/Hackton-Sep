@@ -5,6 +5,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AccessibilityProvider } from '../contexts/AccessibilityContext';
+import AccessibilitySystem from '../components/AccessibilitySystem';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -20,6 +21,8 @@ export default function RootLayout() {
           <Stack.Screen name="test" options={{ headerShown: false }} />
         </Stack>
         <StatusBar style="auto" />
+        {/* Sistema de accesibilidad global */}
+        <AccessibilitySystem />
       </ThemeProvider>
     </AccessibilityProvider>
   );
