@@ -1,23 +1,95 @@
+import { auth } from '@/config/firebase';
+import { getUser } from '@/services/database';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const { getAccessibleColors, getFontSize, speakText, highContrast } = useAccessibility();
   const colors = getAccessibleColors();
   const fontSizes = getFontSize();
 
-  const handleLogin = () => {
-    // Aquí implementarías tu lógica de login
-    speakText("Iniciando sesión, por favor espera");
-    router.replace('/(tabs)'); // Navega a la página principal después del login
+  const handleLogin = async () => {
+    // Validar campos
+    if (!email.trim()) {
+      Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
+      speakText('Error: Ingresa tu correo electrónico');
+      return;
+    }
+
+    if (!password) {
+      Alert.alert('Error', 'Por favor ingresa tu contraseña');
+      speakText('Error: Ingresa tu contraseña');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      speakText('Iniciando sesión, por favor espera');
+
+      // Iniciar sesión con Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const userId = userCredential.user.uid;
+
+      // Obtener datos del usuario desde Firestore
+      const userData = await getUser(userId);
+
+      if (userData) {
+        speakText(`Bienvenido ${userData.name}`);
+        Alert.alert(
+          '✅ Inicio de Sesión Exitoso',
+          `¡Bienvenido de vuelta, ${userData.name}!`,
+          [
+            {
+              text: 'Continuar',
+              onPress: () => router.replace('/(tabs)')
+            }
+          ]
+        );
+      } else {
+        speakText('Bienvenido');
+        router.replace('/(tabs)');
+      }
+
+    } catch (error: any) {
+      setLoading(false);
+      console.error('Error en login:', error);
+
+      let errorMessage = 'Hubo un error al iniciar sesión';
+      let errorTitle = 'Error de Login';
+
+      // Mensajes de error personalizados
+      if (error.code === 'auth/invalid-credential' || error.code === 'auth/wrong-password') {
+        errorMessage = 'Correo o contraseña incorrectos';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No existe una cuenta con este correo';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'El correo electrónico no es válido';
+      } else if (error.code === 'auth/user-disabled') {
+        errorMessage = 'Esta cuenta ha sido deshabilitada';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Error de conexión. Verifica tu internet';
+      } else if (error.code === 'auth/configuration-not-found') {
+        errorTitle = '⚠️ Authentication No Configurado';
+        errorMessage = 'Firebase Authentication no está habilitado.\n\nVe a Firebase Console > Authentication y habilita Email/Password';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert(errorTitle, errorMessage);
+      speakText(`Error: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -135,19 +207,25 @@ export default function LoginScreen() {
         {/* Botón INGRESAR */}
         <TouchableOpacity 
           style={[styles.button, { 
-            backgroundColor: colors.buttonBg 
+            backgroundColor: colors.buttonBg,
+            opacity: loading ? 0.7 : 1
           }]}
           onPress={handleLogin}
+          disabled={loading}
           accessibilityLabel="Botón de iniciar sesión"
           accessibilityHint="Toca para iniciar sesión con las credenciales ingresadas"
           accessibilityRole="button"
         >
-          <Text style={[styles.buttonText, { 
-            color: colors.buttonText,
-            fontSize: fontSizes.button 
-          }]}>
-            INGRESAR
-          </Text>
+          {loading ? (
+            <ActivityIndicator color={colors.buttonText} size="small" />
+          ) : (
+            <Text style={[styles.buttonText, { 
+              color: colors.buttonText,
+              fontSize: fontSizes.button 
+            }]}>
+              INGRESAR
+            </Text>
+          )}
         </TouchableOpacity>
 
         {/* Decoraciones inferiores - Árboles y flores */}

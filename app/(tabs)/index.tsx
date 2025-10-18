@@ -2,9 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Header from '../../components/Header';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
+import { auth } from '@/config/firebase';
+import { signOut } from 'firebase/auth';
 
 export default function HomeScreen() {
   const [showSettings, setShowSettings] = useState(false);
@@ -54,6 +56,33 @@ export default function HomeScreen() {
 
   // Por defecto usar español para los textos
   const currentTexts = texts.es;
+
+  const handleLogout = async () => {
+    Alert.alert(
+      '🚪 Cerrar Sesión',
+      '¿Estás seguro que deseas cerrar sesión?',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              setShowUserMenu(false);
+              router.replace('/(auth)/login');
+            } catch (error) {
+              console.error('Error al cerrar sesión:', error);
+              Alert.alert('Error', 'No se pudo cerrar sesión. Intenta nuevamente.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const activities = [
     { 
@@ -312,6 +341,7 @@ export default function HomeScreen() {
 
               <TouchableOpacity
                 style={styles.userOption}
+                onPress={handleLogout}
                 accessibilityLabel="Cerrar sesión"
                 accessibilityRole="button"
               >
