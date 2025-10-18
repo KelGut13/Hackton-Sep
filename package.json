@@ -10,10 +10,14 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "build:web": "expo export --platform web",
-    "build:android": "expo build:android",
-    "build:ios": "expo build:ios",
+    "build:android": "eas build --platform android",
+    "build:android:preview": "eas build --platform android --profile preview",
+    "build:ios": "eas build --platform ios",
+    "build:ios:preview": "eas build --platform ios --profile preview",
     "export:web": "expo export --platform web",
-    "preview": "npx serve dist"
+    "preview": "npx serve dist",
+    "submit:android": "eas submit --platform android",
+    "submit:ios": "eas submit --platform ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.2",
