@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { signOut } from 'firebase/auth';
+import { signOut, updateProfile, updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import React, { useState } from 'react';
-import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { auth } from '../config/firebase';
+import { updateUser } from '../services/database';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -22,6 +23,15 @@ export default function Header({
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   
+  // Estados para cambiar nombre y contraseña
+  const [showChangeNameModal, setShowChangeNameModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  
   const { getFontSize, speakText } = useAccessibility();
   const { currentLanguage, toggleLanguage, currentTexts } = useLanguage();
   const fontSizes = getFontSize();
@@ -39,6 +49,91 @@ export default function Header({
   const handleLanguageToggle = () => {
     toggleLanguage();
     speakText(`Idioma cambiado a ${currentLanguage === 'es' ? 'inglés' : 'español'}`);
+  };
+
+  const handleChangeName = async () => {
+    if (!newName.trim()) {
+      Alert.alert('Error', 'Por favor ingresa un nombre');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const user = auth.currentUser;
+      
+      if (user) {
+        // Actualizar nombre en Firebase Auth
+        await updateProfile(user, {
+          displayName: newName.trim()
+        });
+
+        // Actualizar nombre en Firestore
+        await updateUser(user.uid, { name: newName.trim() });
+
+        Alert.alert('✅ Éxito', 'Tu nombre ha sido actualizado correctamente');
+        speakText('Nombre actualizado exitosamente');
+        setShowChangeNameModal(false);
+        setNewName('');
+      }
+    } catch (error: any) {
+      console.error('Error al cambiar nombre:', error);
+      Alert.alert('Error', 'No se pudo actualizar el nombre. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    // Validaciones
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Error', 'Por favor completa todos los campos');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert('Error', 'La nueva contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const user = auth.currentUser;
+      
+      if (user && user.email) {
+        // Reautenticar al usuario antes de cambiar la contraseña
+        const credential = EmailAuthProvider.credential(user.email, currentPassword);
+        await reauthenticateWithCredential(user, credential);
+
+        // Cambiar la contraseña
+        await updatePassword(user, newPassword);
+
+        Alert.alert('✅ Éxito', 'Tu contraseña ha sido actualizada correctamente');
+        speakText('Contraseña actualizada exitosamente');
+        setShowChangePasswordModal(false);
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      }
+    } catch (error: any) {
+      console.error('Error al cambiar contraseña:', error);
+      
+      let errorMessage = 'No se pudo actualizar la contraseña. Intenta de nuevo.';
+      
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMessage = 'La contraseña actual es incorrecta';
+      } else if (error.code === 'auth/requires-recent-login') {
+        errorMessage = 'Por seguridad, debes cerrar sesión y volver a iniciar antes de cambiar tu contraseña';
+      }
+      
+      Alert.alert('Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -176,6 +271,10 @@ export default function Header({
             
             <TouchableOpacity
               style={styles.userOption}
+              onPress={() => {
+                setShowUserMenu(false);
+                setShowChangeNameModal(true);
+              }}
               accessibilityLabel={currentTexts.changeName}
               accessibilityRole="button"
             >
@@ -185,6 +284,10 @@ export default function Header({
 
             <TouchableOpacity
               style={styles.userOption}
+              onPress={() => {
+                setShowUserMenu(false);
+                setShowChangePasswordModal(true);
+              }}
               accessibilityLabel={currentTexts.changePassword}
               accessibilityRole="button"
             >
@@ -212,6 +315,129 @@ export default function Header({
             >
               <Text style={styles.closeButtonText}>{currentTexts.close}</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Change Name Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showChangeNameModal}
+        onRequestClose={() => setShowChangeNameModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { fontSize: fontSizes.title }]}>
+              {currentTexts.changeName}
+            </Text>
+            
+            <Text style={styles.inputLabel}>Nuevo Nombre</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ingresa tu nuevo nombre"
+              placeholderTextColor="#999"
+              value={newName}
+              onChangeText={setNewName}
+              autoCapitalize="words"
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowChangeNameModal(false);
+                  setNewName('');
+                }}
+                disabled={loading}
+              >
+                <Text style={styles.cancelButtonText}>{currentTexts.cancel}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton, loading && styles.disabledButton]}
+                onPress={handleChangeName}
+                disabled={loading}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {loading ? 'Guardando...' : 'Guardar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Change Password Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showChangePasswordModal}
+        onRequestClose={() => setShowChangePasswordModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { fontSize: fontSizes.title }]}>
+              {currentTexts.changePassword}
+            </Text>
+            
+            <Text style={styles.inputLabel}>Contraseña Actual</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ingresa tu contraseña actual"
+              placeholderTextColor="#999"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>Nueva Contraseña</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Mínimo 6 caracteres"
+              placeholderTextColor="#999"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.inputLabel}>Confirmar Nueva Contraseña</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Confirma tu nueva contraseña"
+              placeholderTextColor="#999"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setShowChangePasswordModal(false);
+                  setCurrentPassword('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                }}
+                disabled={loading}
+              >
+                <Text style={styles.cancelButtonText}>{currentTexts.cancel}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton, loading && styles.disabledButton]}
+                onPress={handleChangePassword}
+                disabled={loading}
+              >
+                <Text style={styles.confirmButtonText}>
+                  {loading ? 'Guardando...' : 'Guardar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -333,5 +559,53 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  // Nuevos estilos para modales de cambio
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  modalInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#f0f0f0',
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    backgroundColor: '#6BCDDD',
+  },
+  confirmButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });
