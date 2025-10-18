@@ -1,26 +1,49 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAccessibility } from '../contexts/AccessibilityContext';
 
 interface HeaderProps {
   title: string;
-  onSettingsPress?: () => void;
-  onProfilePress?: () => void;
   showLanguageToggle?: boolean;
   showProfile?: boolean;
 }
 
 export default function Header({ 
   title, 
-  onSettingsPress, 
-  onProfilePress, 
   showLanguageToggle = true, 
   showProfile = true 
 }: HeaderProps) {
   const [currentLanguage, setCurrentLanguage] = useState('es');
+  const [showSettings, setShowSettings] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  
   const { getFontSize, speakText } = useAccessibility();
   const fontSizes = getFontSize();
+
+  const texts = {
+    es: {
+      settings: 'Configuraciones',
+      userProfile: 'Perfil de Usuario',
+      darkMode: 'Modo Oscuro',
+      changePassword: 'Cambiar Contraseña',
+      changeName: 'Cambiar Nombre',
+      logout: 'Cerrar Sesión',
+      close: 'Cerrar'
+    },
+    en: {
+      settings: 'Settings',
+      userProfile: 'User Profile',
+      darkMode: 'Dark Mode',
+      changePassword: 'Change Password',
+      changeName: 'Change Name',
+      logout: 'Logout',
+      close: 'Close'
+    }
+  };
+
+  const currentTexts = texts[currentLanguage as keyof typeof texts];
 
   const toggleLanguage = () => {
     const newLang = currentLanguage === 'es' ? 'en' : 'es';
@@ -29,13 +52,13 @@ export default function Header({
   };
 
   const handleSettingsPress = () => {
-    speakText('Configuraciones');
-    onSettingsPress?.();
+    setShowSettings(true);
+    speakText('Abriendo configuraciones');
   };
 
   const handleProfilePress = () => {
-    speakText('Perfil de usuario');
-    onProfilePress?.();
+    setShowUserMenu(true);
+    speakText('Abriendo menú de usuario');
   };
 
   return (
@@ -85,6 +108,104 @@ export default function Header({
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Settings Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showSettings}
+        onRequestClose={() => setShowSettings(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { fontSize: fontSizes.title }]}>
+              {currentTexts.settings}
+            </Text>
+            
+            <TouchableOpacity
+              style={styles.settingOption}
+              onPress={() => {
+                setDarkMode(!darkMode);
+                speakText(`Modo ${darkMode ? 'claro' : 'oscuro'} activado`);
+              }}
+              accessibilityLabel={`${currentTexts.darkMode}: ${darkMode ? 'Activado' : 'Desactivado'}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: darkMode }}
+            >
+              <Ionicons name={darkMode ? "moon" : "sunny"} size={24} color="#333" />
+              <Text style={styles.settingText}>{currentTexts.darkMode}</Text>
+              <Ionicons 
+                name={darkMode ? "toggle" : "toggle-outline"} 
+                size={24} 
+                color={darkMode ? "#4CAF50" : "#ccc"} 
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowSettings(false)}
+              accessibilityLabel={currentTexts.close}
+              accessibilityRole="button"
+            >
+              <Text style={styles.closeButtonText}>{currentTexts.close}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* User Menu Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showUserMenu}
+        onRequestClose={() => setShowUserMenu(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={[styles.modalTitle, { fontSize: fontSizes.title }]}>
+              {currentTexts.userProfile}
+            </Text>
+            
+            <TouchableOpacity
+              style={styles.userOption}
+              accessibilityLabel={currentTexts.changeName}
+              accessibilityRole="button"
+            >
+              <Ionicons name="person-outline" size={24} color="#333" />
+              <Text style={styles.userOptionText}>{currentTexts.changeName}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.userOption}
+              accessibilityLabel={currentTexts.changePassword}
+              accessibilityRole="button"
+            >
+              <Ionicons name="lock-closed-outline" size={24} color="#333" />
+              <Text style={styles.userOptionText}>{currentTexts.changePassword}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.userOption}
+              accessibilityLabel={currentTexts.logout}
+              accessibilityRole="button"
+            >
+              <Ionicons name="log-out-outline" size={24} color="#f44336" />
+              <Text style={[styles.userOptionText, { color: '#f44336' }]}>
+                {currentTexts.logout}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setShowUserMenu(false)}
+              accessibilityLabel={currentTexts.close}
+              accessibilityRole="button"
+            >
+              <Text style={styles.closeButtonText}>{currentTexts.close}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -143,5 +264,65 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    color: '#333',
+  },
+  settingOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  settingText: {
+    flex: 1,
+    marginLeft: 15,
+    fontSize: 16,
+    color: '#333',
+  },
+  userOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  userOptionText: {
+    flex: 1,
+    marginLeft: 15,
+    fontSize: 16,
+    color: '#333',
+  },
+  closeButton: {
+    backgroundColor: '#6BCDDD',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

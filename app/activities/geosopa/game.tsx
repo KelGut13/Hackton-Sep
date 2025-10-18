@@ -233,8 +233,6 @@ export default function GeoSopaGameScreen() {
         {/* Header */}
         <Header 
           title={currentTexts.title}
-          onSettingsPress={() => speakText('Configuraciones de la actividad')}
-          onProfilePress={() => speakText('Perfil de usuario')}
         />
 
 
@@ -300,6 +298,8 @@ export default function GeoSopaGameScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* All modals now handled by Header component */}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -405,6 +405,38 @@ const styles = StyleSheet.create({
   nextButtonText: {
     color: 'white',
     fontSize: 18,
+    fontWeight: 'bold',
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    width: '80%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 20,
+    color: '#333',
+  },
+  closeButton: {
+    backgroundColor: '#6BCDDD',
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  closeButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });

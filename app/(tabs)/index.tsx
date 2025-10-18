@@ -1,17 +1,14 @@
+import { auth } from '@/config/firebase';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import { signOut } from 'firebase/auth';
 import React, { useState } from 'react';
-import { Alert, Modal, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Header from '../../components/Header';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
-import { auth } from '@/config/firebase';
-import { signOut } from 'firebase/auth';
 
 export default function HomeScreen() {
-  const [showSettings, setShowSettings] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [completedActivities, setCompletedActivities] = useState(3);
   const totalActivities = 12;
   
@@ -72,7 +69,6 @@ export default function HomeScreen() {
           onPress: async () => {
             try {
               await signOut(auth);
-              setShowUserMenu(false);
               router.replace('/(auth)/login');
             } catch (error) {
               console.error('Error al cerrar sesión:', error);
@@ -192,14 +188,6 @@ export default function HomeScreen() {
         {/* Header */}
         <Header
           title="KidiQuo"
-          onSettingsPress={() => {
-            setShowSettings(true);
-            speakText('Abriendo configuraciones');
-          }}
-          onProfilePress={() => {
-            setShowUserMenu(true);
-            speakText('Abriendo menú de usuario');
-          }}
           showLanguageToggle={true}
           showProfile={true}
         />
@@ -262,106 +250,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* Accessibility Menu now managed globally */}
-
-        {/* Settings Modal */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={showSettings}
-          onRequestClose={() => setShowSettings(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={[styles.modalTitle, { fontSize: fontSizes.title }]}>
-                {currentTexts.settings}
-              </Text>
-              
-              <TouchableOpacity
-                style={styles.settingOption}
-                onPress={() => {
-                  setDarkMode(!darkMode);
-                  speakText(`Modo ${darkMode ? 'claro' : 'oscuro'} activado`);
-                }}
-                accessibilityLabel={`${currentTexts.darkMode}: ${darkMode ? 'Activado' : 'Desactivado'}`}
-                accessibilityRole="switch"
-                accessibilityState={{ checked: darkMode }}
-              >
-                <Ionicons name={darkMode ? "moon" : "sunny"} size={24} color="#333" />
-                <Text style={styles.settingText}>{currentTexts.darkMode}</Text>
-                <Ionicons 
-                  name={darkMode ? "toggle" : "toggle-outline"} 
-                  size={24} 
-                  color={darkMode ? "#4CAF50" : "#ccc"} 
-                />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowSettings(false)}
-                accessibilityLabel="Cerrar configuraciones"
-                accessibilityRole="button"
-              >
-                <Text style={styles.closeButtonText}>Cerrar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* User Menu Modal */}
-        <Modal
-          animationType="slide"
-          transparent={true}
-          visible={showUserMenu}
-          onRequestClose={() => setShowUserMenu(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={[styles.modalTitle, { fontSize: fontSizes.title }]}>
-                {currentTexts.userProfile}
-              </Text>
-              
-              <TouchableOpacity
-                style={styles.userOption}
-                accessibilityLabel="Cambiar nombre"
-                accessibilityRole="button"
-              >
-                <Ionicons name="person-outline" size={24} color="#333" />
-                <Text style={styles.userOptionText}>{currentTexts.changeName}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.userOption}
-                accessibilityLabel="Cambiar contraseña"
-                accessibilityRole="button"
-              >
-                <Ionicons name="lock-closed-outline" size={24} color="#333" />
-                <Text style={styles.userOptionText}>{currentTexts.changePassword}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.userOption}
-                onPress={handleLogout}
-                accessibilityLabel="Cerrar sesión"
-                accessibilityRole="button"
-              >
-                <Ionicons name="log-out-outline" size={24} color="#f44336" />
-                <Text style={[styles.userOptionText, { color: '#f44336' }]}>
-                  {currentTexts.logout}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setShowUserMenu(false)}
-                accessibilityLabel="Cerrar menú de usuario"
-                accessibilityRole="button"
-              >
-                <Text style={styles.closeButtonText}>Cerrar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+        {/* All modals now handled by Header component */}
       </SafeAreaView>
     </LinearGradient>
   );
@@ -463,65 +352,5 @@ const styles = StyleSheet.create({
   progressStars: {
     flexDirection: 'row',
     gap: 5,
-  },
-  // Modal styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
-    width: '80%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
-  },
-  settingOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  settingText: {
-    flex: 1,
-    marginLeft: 15,
-    fontSize: 16,
-    color: '#333',
-  },
-  userOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  userOptionText: {
-    flex: 1,
-    marginLeft: 15,
-    fontSize: 16,
-    color: '#333',
-  },
-  closeButton: {
-    backgroundColor: '#6BCDDD',
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginTop: 20,
-    alignItems: 'center',
-  },
-  closeButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
   },
 });
