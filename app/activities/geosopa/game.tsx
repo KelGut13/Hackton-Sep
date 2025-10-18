@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Header from '../../../components/Header';
 import { useAccessibility } from '../../../contexts/AccessibilityContext';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -230,49 +231,11 @@ export default function GeoSopaGameScreen() {
     >
       <SafeAreaView style={styles.safeArea}>
         {/* Header */}
-        <View style={styles.header}>
-          {/* Settings Button (Engranaje) */}
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => speakText('Configuraciones de la actividad')}
-            accessibilityLabel="Configuraciones de la actividad"
-            accessibilityRole="button"
-          >
-            <Ionicons name="settings" size={24} color="white" />
-          </TouchableOpacity>
-
-          {/* Title */}
-          <Text style={[styles.headerTitle, { fontSize: fontSizes.title }]}>
-            {currentTexts.title}
-          </Text>
-
-          {/* Right side buttons */}
-          <View style={styles.rightButtons}>
-            {/* Language Toggle */}
-            <TouchableOpacity
-              style={styles.languageButton}
-              onPress={toggleLanguage}
-              accessibilityLabel={`Cambiar idioma a ${currentLanguage === 'es' ? 'inglés' : 'español'}`}
-              accessibilityRole="button"
-            >
-              <Text style={styles.languageFlag}>
-                {currentLanguage === 'es' ? '🇲🇽' : '🇺🇸'}
-              </Text>
-            </TouchableOpacity>
-
-            {/* User Profile */}
-            <TouchableOpacity
-              style={styles.profileButton}
-              onPress={() => speakText('Perfil de usuario')}
-              accessibilityLabel="Perfil de usuario"
-              accessibilityRole="button"
-            >
-              <View style={styles.profileImage}>
-                <Ionicons name="person" size={20} color="white" />
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <Header 
+          title={currentTexts.title}
+          onSettingsPress={() => speakText('Configuraciones de la actividad')}
+          onProfilePress={() => speakText('Perfil de usuario')}
+        />
 
 
 
@@ -349,61 +312,6 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 40, // Aumentado para mover el header más abajo
-    paddingBottom: 15,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  rightButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  languageButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  languageFlag: {
-    fontSize: 20,
-  },
-  profileButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileImage: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
   gameContainer: {
     flex: 1,
     alignItems: 'center',
