@@ -87,7 +87,9 @@ export default function RegisterScreen() {
           createdAt: new Date()
         }
       ];
+      console.log('🔄 Configurando roles temporales:', rolesTemp);
       setRoles(rolesTemp);
+      console.log('✅ Roles temporales configurados. Total:', rolesTemp.length);
       speakText('Usando roles temporales: Alumno y Maestro');
     };
 
@@ -197,6 +199,7 @@ export default function RegisterScreen() {
   };
 
   const selectRole = (role: Role) => {
+    console.log('✅ Rol seleccionado:', { id: role.id, name: role.name });
     setSelectedRole(role);
     setShowRoleModal(false);
     speakText(`Rol seleccionado: ${role.name}`);
@@ -336,13 +339,27 @@ export default function RegisterScreen() {
             </View>
 
             <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>ROL</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.roleSelector, { backgroundColor: colors.inputBg }]}
               onPress={() => {
+                console.log('👆 Click en selector de rol');
+                console.log('📊 Estado actual:', {
+                  loadingRoles,
+                  rolesCount: roles.length,
+                  roles: roles.map(r => ({ id: r.id, name: r.name })),
+                  selectedRole: selectedRole ? { id: selectedRole.id, name: selectedRole.name } : null
+                });
+                
                 if (loadingRoles) {
                   Alert.alert('Cargando', 'Espera mientras se cargan los roles');
                   return;
                 }
+                
+                if (roles.length === 0) {
+                  Alert.alert('⚠️ Sin Roles', 'No hay roles disponibles. Reintenta en un momento.');
+                  return;
+                }
+                
                 setShowRoleModal(true);
                 speakText("Abriendo selector de rol");
               }}
