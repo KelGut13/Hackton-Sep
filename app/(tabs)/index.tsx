@@ -24,8 +24,8 @@ export default function HomeScreen() {
       geoSopa: 'GeoSopa',
       puntoGo: 'PuntoGo',
       matematico: 'P.Matemático',
-      languagesAndKnowledge: 'Lenguas y Saberes',
-      thoughts: 'Pensamientos',
+      languages: 'Lenguas',
+      scientificThought: 'Saberes y Pensamiento Científico',
       progress: 'Progreso',
       settings: 'Configuraciones',
       userProfile: 'Perfil de Usuario',
@@ -39,8 +39,8 @@ export default function HomeScreen() {
       geoSopa: 'GeoSoup',
       puntoGo: 'PuntoGo',
       matematico: 'P.Mathematical',
-      languagesAndKnowledge: 'Languages and Knowledge',
-      thoughts: 'Thoughts',
+      languages: 'Languages',
+      scientificThought: 'Knowledge and Scientific Thought',
       progress: 'Progress',
       settings: 'Settings',
       userProfile: 'User Profile',
@@ -180,26 +180,26 @@ export default function HomeScreen() {
           style={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          {/* Languages and Knowledge Section */}
+          {/* Languages Section */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { 
               fontSize: fontSizes.title, 
               color: colors.labelText 
             }]}>
-              {currentTexts.languagesAndKnowledge}
+              {currentTexts.languages}
             </Text>
             <View style={styles.activitiesGrid}>
               {activities.slice(0, 2).map(renderActivity)}
             </View>
           </View>
 
-          {/* Thoughts Section */}
+          {/* Scientific Thought Section */}
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { 
               fontSize: fontSizes.title, 
               color: colors.labelText 
             }]}>
-              {currentTexts.thoughts}
+              {currentTexts.scientificThought}
             </Text>
             <View style={styles.activitiesGrid}>
               {activities.slice(2, 6).map(renderActivity)}
