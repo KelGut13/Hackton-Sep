@@ -41,8 +41,7 @@ export default function GeoSopaActivity() {
 
   const handlePlayButton = () => {
     speakText('Iniciando juego GeoSopa');
-    // Aquí iría la navegación al juego real
-    // router.push('/activities/geosopa/game');
+    router.push('/activities/geosopa/game');
   };
 
   const handleHowToPlay = () => {
