@@ -390,7 +390,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingTop: 40, // Aumentado para mover el header más abajo
+    paddingBottom: 15,
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
   headerButton: {

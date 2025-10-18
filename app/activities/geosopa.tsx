@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 40, // Aumentado para mover el header más abajo
     paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: 'rgba(0, 0, 0, 0.1)',

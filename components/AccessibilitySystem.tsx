@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import GlobalAccessibilityButton from './GlobalAccessibilityButton';
 import AccessibilityMenu from './AccessibilityMenu';
+import GlobalAccessibilityButton from './GlobalAccessibilityButton';
 
 export default function AccessibilitySystem() {
   // Asegurar que el modal inicie cerrado
