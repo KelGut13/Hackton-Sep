@@ -95,29 +95,55 @@ export default function FirebaseDiagnostic() {
 
     // 4. Verificar Authentication
     try {
-      const currentUser = auth.currentUser;
-      if (currentUser) {
+      // Verificar si Authentication está configurado
+      if (!auth) {
         diagnostics.push({
           name: 'Firebase Auth',
+          status: 'error',
+          message: 'Authentication no inicializado',
+          details: 'Firebase Authentication no está configurado correctamente'
+        });
+      } else {
+        diagnostics.push({
+          name: 'Firebase Auth - Configuración',
           status: 'success',
-          message: 'Usuario autenticado',
-          details: `Email: ${currentUser.email}`
+          message: 'Authentication inicializado correctamente',
+          details: 'Email/Password debe estar habilitado en Firebase Console'
+        });
+
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          diagnostics.push({
+            name: 'Firebase Auth - Usuario',
+            status: 'success',
+            message: 'Usuario autenticado',
+            details: `Email: ${currentUser.email}`
+          });
+        } else {
+          diagnostics.push({
+            name: 'Firebase Auth - Usuario',
+            status: 'warning',
+            message: 'No hay usuario autenticado',
+            details: 'Esto es normal si no has iniciado sesión'
+          });
+        }
+      }
+    } catch (error: any) {
+      if (error.code === 'auth/configuration-not-found') {
+        diagnostics.push({
+          name: 'Firebase Auth',
+          status: 'error',
+          message: 'Authentication NO está habilitado',
+          details: 'Ve a Firebase Console > Authentication y habilita Email/Password. Ver: SOLUCION_AUTH_NOT_CONFIGURED.md'
         });
       } else {
         diagnostics.push({
           name: 'Firebase Auth',
-          status: 'warning',
-          message: 'No hay usuario autenticado',
-          details: 'Esto es normal si no has iniciado sesión'
+          status: 'error',
+          message: 'Error en Authentication',
+          details: error.message
         });
       }
-    } catch (error: any) {
-      diagnostics.push({
-        name: 'Firebase Auth',
-        status: 'error',
-        message: 'Error en Authentication',
-        details: error.message
-      });
     }
 
     setResults(diagnostics);

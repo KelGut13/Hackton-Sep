@@ -36,47 +36,59 @@ export default function RegisterScreen() {
       try {
         setLoadingRoles(true);
         const fetchedRoles = await getRoles();
-        setRoles(fetchedRoles);
-        speakText(`${fetchedRoles.length} roles disponibles`);
+        
+        // Si Firebase retorna roles, usarlos
+        if (fetchedRoles && fetchedRoles.length > 0) {
+          setRoles(fetchedRoles);
+          speakText(`${fetchedRoles.length} roles disponibles`);
+        } else {
+          // Si no hay roles en Firebase, usar roles temporales
+          console.warn('No hay roles en Firebase, usando roles temporales');
+          setRolesTemporales();
+        }
       } catch (error: any) {
         console.error('Error cargando roles:', error);
         
-        // Si es error de permisos, usar roles por defecto
+        // Cualquier error: usar roles temporales
+        setRolesTemporales();
+        
+        // Solo mostrar alerta si es error de permisos
         if (error.code === 'permission-denied' || error.message?.includes('permissions')) {
           Alert.alert(
-            '⚠️ Roles no inicializados',
-            'Los roles aún no están configurados en Firebase.\n\n' +
-            '1. Ve a la pestaña "Firebase" en la app\n' +
-            '2. Presiona "Inicializar Roles"\n\n' +
-            'Por ahora, usaremos roles temporales para que puedas continuar.',
+            '⚠️ Usando Roles Temporales',
+            'Los roles no están configurados en Firebase.\n\n' +
+            'Para solución permanente:\n' +
+            '1. Ve a la pestaña "Firebase"\n' +
+            '2. Presiona "Inicializar Roles"',
             [{ text: 'Entendido' }]
           );
-          
-          // Roles por defecto temporales
-          setRoles([
-            {
-              id: 'temp-student',
-              name: 'Alumno',
-              value: 'student',
-              description: 'Usuario que realiza actividades y aprende',
-              permissions: ['view_lessons', 'complete_activities', 'view_progress'],
-              createdAt: new Date()
-            },
-            {
-              id: 'temp-teacher',
-              name: 'Maestro',
-              value: 'teacher',
-              description: 'Usuario que crea y gestiona lecciones',
-              permissions: ['view_lessons', 'create_lessons', 'edit_lessons', 'view_student_progress'],
-              createdAt: new Date()
-            }
-          ]);
-        } else {
-          Alert.alert('Error', 'No se pudieron cargar los roles. Por favor verifica tu conexión.');
         }
       } finally {
         setLoadingRoles(false);
       }
+    };
+
+    const setRolesTemporales = () => {
+      const rolesTemp = [
+        {
+          id: 'temp-student',
+          name: 'Alumno',
+          value: 'student',
+          description: 'Usuario que realiza actividades y aprende',
+          permissions: ['view_lessons', 'complete_activities', 'view_progress'],
+          createdAt: new Date()
+        },
+        {
+          id: 'temp-teacher',
+          name: 'Maestro',
+          value: 'teacher',
+          description: 'Usuario que crea y gestiona lecciones',
+          permissions: ['view_lessons', 'create_lessons', 'edit_lessons', 'view_student_progress'],
+          createdAt: new Date()
+        }
+      ];
+      setRoles(rolesTemp);
+      speakText('Usando roles temporales: Alumno y Maestro');
     };
 
     loadRoles();
@@ -150,19 +162,31 @@ export default function RegisterScreen() {
       console.error('Error en registro:', error);
       
       let errorMessage = 'Hubo un error al registrar el usuario';
+      let errorTitle = 'Error de Registro';
       
       // Mensajes de error personalizados
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.code === 'auth/configuration-not-found') {
+        errorTitle = '⚠️ Authentication No Configurado';
+        errorMessage = 'Firebase Authentication no está habilitado.\n\n' +
+          '📋 Pasos para solucionar:\n' +
+          '1. Ve a Firebase Console\n' +
+          '2. Abre "Authentication"\n' +
+          '3. Habilita "Email/Password"\n' +
+          '4. Guarda los cambios\n\n' +
+          'Ver: SOLUCION_AUTH_NOT_CONFIGURED.md';
+      } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = 'Este correo ya está registrado';
       } else if (error.code === 'auth/invalid-email') {
         errorMessage = 'El correo electrónico no es válido';
       } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'La contraseña es muy débil';
+        errorMessage = 'La contraseña es muy débil (mínimo 6 caracteres)';
       } else if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Error de conexión. Verifica tu internet';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
-      Alert.alert('Error de Registro', errorMessage);
+      Alert.alert(errorTitle, errorMessage);
       speakText(`Error: ${errorMessage}`);
     }
   };
