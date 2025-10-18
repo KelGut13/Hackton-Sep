@@ -72,22 +72,28 @@ export default function RegisterScreen() {
       const rolesTemp = [
         {
           id: 'temp-student',
+          nombre: 'Alumno',
           name: 'Alumno',
           value: 'student',
+          descripcion: 'Usuario que realiza actividades y aprende',
           description: 'Usuario que realiza actividades y aprende',
           permissions: ['view_lessons', 'complete_activities', 'view_progress'],
           createdAt: new Date()
         },
         {
           id: 'temp-teacher',
+          nombre: 'Maestro',
           name: 'Maestro',
           value: 'teacher',
+          descripcion: 'Usuario que crea y gestiona lecciones',
           description: 'Usuario que crea y gestiona lecciones',
           permissions: ['view_lessons', 'create_lessons', 'edit_lessons', 'view_student_progress'],
           createdAt: new Date()
         }
       ];
+      console.log('🔄 Configurando roles temporales:', rolesTemp);
       setRoles(rolesTemp);
+      console.log('✅ Roles temporales configurados. Total:', rolesTemp.length);
       speakText('Usando roles temporales: Alumno y Maestro');
     };
 
@@ -128,8 +134,11 @@ export default function RegisterScreen() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const userId = userCredential.user.uid;
 
+      console.log('🔐 Usuario creado en Authentication:', userId);
+      console.log('👤 Rol seleccionado:', selectedRole.name, '(ID:', selectedRole.id, ')');
+
       // 2. Guardar datos adicionales en Firestore
-      await createUser({
+      await createUser(userId, {
         name: name.trim(),
         email: email.trim(),
         createdAt: new Date(),
@@ -142,6 +151,8 @@ export default function RegisterScreen() {
           screenReaderEnabled
         }
       });
+
+      console.log('✅ Datos guardados en Firestore con roleId:', selectedRole.id);
 
       // 3. Éxito - navegar a la app
       speakText('Usuario registrado exitosamente. Bienvenido a EduPlay');
@@ -192,6 +203,7 @@ export default function RegisterScreen() {
   };
 
   const selectRole = (role: Role) => {
+    console.log('✅ Rol seleccionado:', { id: role.id, name: role.name });
     setSelectedRole(role);
     setShowRoleModal(false);
     speakText(`Rol seleccionado: ${role.name}`);
@@ -331,13 +343,27 @@ export default function RegisterScreen() {
             </View>
 
             <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>ROL</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.roleSelector, { backgroundColor: colors.inputBg }]}
               onPress={() => {
+                console.log('👆 Click en selector de rol');
+                console.log('📊 Estado actual:', {
+                  loadingRoles,
+                  rolesCount: roles.length,
+                  roles: roles.map(r => ({ id: r.id, name: r.name })),
+                  selectedRole: selectedRole ? { id: selectedRole.id, name: selectedRole.name } : null
+                });
+                
                 if (loadingRoles) {
                   Alert.alert('Cargando', 'Espera mientras se cargan los roles');
                   return;
                 }
+                
+                if (roles.length === 0) {
+                  Alert.alert('⚠️ Sin Roles', 'No hay roles disponibles. Reintenta en un momento.');
+                  return;
+                }
+                
                 setShowRoleModal(true);
                 speakText("Abriendo selector de rol");
               }}

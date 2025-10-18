@@ -6,6 +6,7 @@ import {
     getDocs,
     orderBy,
     query,
+    setDoc,
     updateDoc,
     where
 } from 'firebase/firestore';
@@ -29,11 +30,14 @@ export interface User {
 
 export interface Role {
   id?: string;
-  name: string;        // Nombre del rol (ej: 'Alumno', 'Maestro')
-  value: string;       // Valor interno (ej: 'student', 'teacher')
-  description?: string; // Descripción opcional del rol
+  nombre: string;        // Nombre del rol (ej: 'Alumno', 'Maestro')
+  value?: string;       // Valor interno (ej: 'student', 'teacher')
+  descripcion?: string; // Descripción opcional del rol
   permissions?: string[]; // Permisos asociados al rol
-  createdAt: Date;
+  createdAt?: Date;
+  // Alias en inglés para compatibilidad
+  name?: string;
+  description?: string;
 }
 
 export interface Lesson {
@@ -64,15 +68,16 @@ export const getUser = async (userId: string): Promise<User | null> => {
 };
 
 /**
- * Crear un nuevo usuario
+ * Crear un nuevo usuario con UID específico
  */
-export const createUser = async (userData: Omit<User, 'id'>): Promise<string> => {
+export const createUser = async (userId: string, userData: Omit<User, 'id'>): Promise<string> => {
   try {
-    const docRef = await addDoc(collection(db, 'users'), {
+    // Usar el UID de Authentication como ID del documento en Firestore
+    await setDoc(doc(db, 'users', userId), {
       ...userData,
       createdAt: new Date()
     });
-    return docRef.id;
+    return userId;
   } catch (error) {
     console.error('Error creating user:', error);
     throw error;
@@ -208,14 +213,53 @@ export const getUserProgress = async (userId: string): Promise<any[]> => {
  * Obtener todos los roles disponibles
  */
 export const getRoles = async (): Promise<Role[]> => {
+  console.log('🌐 API getRoles(): Iniciando llamada a Firebase Firestore...');
+  console.log('📍 Colección objetivo: "roles"');
+  
   try {
     const querySnapshot = await getDocs(collection(db, 'roles'));
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Role[];
-  } catch (error) {
-    console.error('Error getting roles:', error);
+    
+    console.log('✅ API getRoles(): Respuesta de Firebase recibida');
+    console.log('📊 Cantidad de documentos encontrados:', querySnapshot.size);
+    
+    if (querySnapshot.empty) {
+      console.warn('⚠️ API getRoles(): La colección "roles" está VACÍA');
+      console.log('💡 Solución: Ve a la pestaña Firebase y presiona "Inicializar Roles"');
+    }
+    
+    const roles = querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      // Mapear campos en español a inglés para compatibilidad
+      const role = {
+        id: doc.id,
+        ...data,
+        name: data.nombre || data.name,
+        description: data.descripcion || data.description
+      };
+      console.log(`📄 Documento procesado:`, {
+        id: doc.id,
+        nombre: data.nombre,
+        name: role.name,
+        value: data.value
+      });
+      return role;
+    }) as Role[];
+    
+    console.log('📦 API getRoles(): Total de roles procesados:', roles.length);
+    console.log('📋 Roles completos:', roles);
+    
+    return roles;
+  } catch (error: any) {
+    console.error('❌ API getRoles(): ERROR al obtener roles');
+    console.error('🔴 Código de error:', error.code);
+    console.error('🔴 Mensaje:', error.message);
+    console.error('🔴 Error completo:', error);
+    
+    if (error.code === 'permission-denied') {
+      console.error('🔒 ERROR DE PERMISOS: Las reglas de Firestore están bloqueando el acceso');
+      console.log('💡 Solución: Configura las reglas en Firebase Console > Firestore > Reglas');
+    }
+    
     throw error;
   }
 };
@@ -256,39 +300,52 @@ export const createRole = async (roleData: Omit<Role, 'id'>): Promise<string> =>
  * Inicializar roles por defecto (ejecutar una sola vez)
  */
 export const initializeDefaultRoles = async (): Promise<void> => {
+  console.log('🚀 API initializeDefaultRoles(): Iniciando inicialización de roles...');
+  
   try {
     // Verificar si ya existen roles
+    console.log('🔍 Verificando si ya existen roles...');
     const existingRoles = await getRoles();
+    
     if (existingRoles.length > 0) {
-      console.log('Los roles ya están inicializados');
+      console.log('✅ Los roles ya están inicializados');
+      console.log('📋 Roles existentes:', existingRoles.map(r => r.name).join(', '));
       return;
     }
 
-    // Crear roles por defecto
+    console.log('📝 No hay roles. Creando roles por defecto...');
+
+    // Crear roles por defecto (usando campos en español)
     const defaultRoles = [
       {
-        name: 'Alumno',
+        nombre: 'Alumno',
         value: 'student',
-        description: 'Usuario que realiza actividades y aprende',
+        descripcion: 'Usuario que realiza actividades y aprende',
         permissions: ['view_lessons', 'complete_activities', 'view_progress'],
         createdAt: new Date()
       },
       {
-        name: 'Maestro',
+        nombre: 'Maestro',
         value: 'teacher',
-        description: 'Usuario que crea y gestiona lecciones',
+        descripcion: 'Usuario que crea y gestiona lecciones',
         permissions: ['view_lessons', 'create_lessons', 'edit_lessons', 'view_student_progress'],
         createdAt: new Date()
       }
     ];
 
+    console.log(`➕ Creando ${defaultRoles.length} roles...`);
+    
     for (const role of defaultRoles) {
-      await createRole(role);
+      console.log(`📌 Creando rol: ${role.nombre}...`);
+      const roleId = await createRole(role);
+      console.log(`✅ Rol "${role.nombre}" creado con ID: ${roleId}`);
     }
 
-    console.log('Roles inicializados correctamente');
-  } catch (error) {
-    console.error('Error initializing default roles:', error);
+    console.log('🎉 ¡Roles inicializados correctamente!');
+  } catch (error: any) {
+    console.error('❌ ERROR al inicializar roles:', error);
+    console.error('🔴 Código:', error.code);
+    console.error('🔴 Mensaje:', error.message);
     throw error;
   }
 };
