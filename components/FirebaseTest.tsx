@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { getLessons, createLesson, Lesson } from '../services/database';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { createLesson, getLessons, Lesson } from '../services/database';
 
 /**
  * Componente de ejemplo para probar la conexión con Firebase
