@@ -30,11 +30,14 @@ export interface User {
 
 export interface Role {
   id?: string;
-  name: string;        // Nombre del rol (ej: 'Alumno', 'Maestro')
-  value: string;       // Valor interno (ej: 'student', 'teacher')
-  description?: string; // Descripción opcional del rol
+  nombre: string;        // Nombre del rol (ej: 'Alumno', 'Maestro')
+  value?: string;       // Valor interno (ej: 'student', 'teacher')
+  descripcion?: string; // Descripción opcional del rol
   permissions?: string[]; // Permisos asociados al rol
-  createdAt: Date;
+  createdAt?: Date;
+  // Alias en inglés para compatibilidad
+  name?: string;
+  description?: string;
 }
 
 export interface Lesson {
@@ -226,15 +229,20 @@ export const getRoles = async (): Promise<Role[]> => {
     
     const roles = querySnapshot.docs.map(doc => {
       const data = doc.data();
+      // Mapear campos en español a inglés para compatibilidad
+      const role = {
+        id: doc.id,
+        ...data,
+        name: data.nombre || data.name,
+        description: data.descripcion || data.description
+      };
       console.log(`📄 Documento procesado:`, {
         id: doc.id,
-        name: data.name,
+        nombre: data.nombre,
+        name: role.name,
         value: data.value
       });
-      return {
-        id: doc.id,
-        ...data
-      };
+      return role;
     }) as Role[];
     
     console.log('📦 API getRoles(): Total de roles procesados:', roles.length);
@@ -307,19 +315,19 @@ export const initializeDefaultRoles = async (): Promise<void> => {
 
     console.log('📝 No hay roles. Creando roles por defecto...');
 
-    // Crear roles por defecto
+    // Crear roles por defecto (usando campos en español)
     const defaultRoles = [
       {
-        name: 'Alumno',
+        nombre: 'Alumno',
         value: 'student',
-        description: 'Usuario que realiza actividades y aprende',
+        descripcion: 'Usuario que realiza actividades y aprende',
         permissions: ['view_lessons', 'complete_activities', 'view_progress'],
         createdAt: new Date()
       },
       {
-        name: 'Maestro',
+        nombre: 'Maestro',
         value: 'teacher',
-        description: 'Usuario que crea y gestiona lecciones',
+        descripcion: 'Usuario que crea y gestiona lecciones',
         permissions: ['view_lessons', 'create_lessons', 'edit_lessons', 'view_student_progress'],
         createdAt: new Date()
       }
@@ -328,9 +336,9 @@ export const initializeDefaultRoles = async (): Promise<void> => {
     console.log(`➕ Creando ${defaultRoles.length} roles...`);
     
     for (const role of defaultRoles) {
-      console.log(`📌 Creando rol: ${role.name}...`);
+      console.log(`📌 Creando rol: ${role.nombre}...`);
       const roleId = await createRole(role);
-      console.log(`✅ Rol "${role.name}" creado con ID: ${roleId}`);
+      console.log(`✅ Rol "${role.nombre}" creado con ID: ${roleId}`);
     }
 
     console.log('🎉 ¡Roles inicializados correctamente!');

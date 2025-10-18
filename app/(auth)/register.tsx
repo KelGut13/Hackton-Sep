@@ -72,16 +72,20 @@ export default function RegisterScreen() {
       const rolesTemp = [
         {
           id: 'temp-student',
+          nombre: 'Alumno',
           name: 'Alumno',
           value: 'student',
+          descripcion: 'Usuario que realiza actividades y aprende',
           description: 'Usuario que realiza actividades y aprende',
           permissions: ['view_lessons', 'complete_activities', 'view_progress'],
           createdAt: new Date()
         },
         {
           id: 'temp-teacher',
+          nombre: 'Maestro',
           name: 'Maestro',
           value: 'teacher',
+          descripcion: 'Usuario que crea y gestiona lecciones',
           description: 'Usuario que crea y gestiona lecciones',
           permissions: ['view_lessons', 'create_lessons', 'edit_lessons', 'view_student_progress'],
           createdAt: new Date()
