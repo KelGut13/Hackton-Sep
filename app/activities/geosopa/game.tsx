@@ -2,7 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, PanResponder, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Header from '../../../components/Header';
 import { useAccessibility } from '../../../contexts/AccessibilityContext';
 import { useLanguage } from '../../../contexts/LanguageContext';
@@ -24,51 +25,32 @@ const GRID_DATA = [
   ['Z', 'R', 'E', 'C', 'T', 'A', 'N', 'G', 'U', 'L', 'O'],  // fila 10 - RECTANGULO (1-10)
 ];
 
-// Palabras a encontrar con posiciones verificadas manualmente
+// Palabras a encontrar con auto-detección de posiciones
 const WORDS_TO_FIND = [
   {
     word: 'CUADRADO',
     found: false,
-    positions: [
-      {row: 2, col: 0}, {row: 2, col: 1}, {row: 2, col: 2}, 
-      {row: 2, col: 3}, {row: 2, col: 4}, {row: 2, col: 5}, 
-      {row: 2, col: 6}, {row: 2, col: 7}
-    ]
+    positions: []
   },
   {
     word: 'TRIANGULO',
     found: false,
-    positions: [
-      {row: 3, col: 5}, {row: 3, col: 6}, {row: 3, col: 7}, 
-      {row: 3, col: 8}, {row: 3, col: 9}, {row: 3, col: 10}
-    ]
+    positions: []
   },
   {
     word: 'PENTAGONO',
     found: false,
-    positions: [
-      {row: 4, col: 1}, {row: 4, col: 2}, {row: 4, col: 3}, 
-      {row: 4, col: 4}, {row: 4, col: 5}, {row: 4, col: 6}, 
-      {row: 4, col: 7}, {row: 4, col: 8}, {row: 4, col: 9}
-    ]
+    positions: []
   },
   {
     word: 'CIRCULO',
-    found: false, 
-    positions: [
-      {row: 6, col: 5}, {row: 6, col: 6}, {row: 6, col: 7}, 
-      {row: 6, col: 8}, {row: 6, col: 9}, {row: 6, col: 10}
-    ]
+    found: false,
+    positions: []
   },
   {
-    word: 'RECTANGULO', 
+    word: 'RECTANGULO',
     found: false,
-    positions: [
-      {row: 10, col: 1}, {row: 10, col: 2}, {row: 10, col: 3}, 
-      {row: 10, col: 4}, {row: 10, col: 5}, {row: 10, col: 6}, 
-      {row: 10, col: 7}, {row: 10, col: 8}, {row: 10, col: 9}, 
-      {row: 10, col: 10}
-    ]
+    positions: []
   }
 ];
 
@@ -88,126 +70,333 @@ export default function GeoSopaGameScreen() {
   const [currentSelection, setCurrentSelection] = useState<{row: number, col: number}[]>([]);
   const [isSelecting, setIsSelecting] = useState(false);
   const [startCell, setStartCell] = useState<{row: number, col: number} | null>(null);
+  const [endCell, setEndCell] = useState<{row: number, col: number} | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   const { getAccessibleColors, getFontSize, speakText } = useAccessibility();
   const { currentTexts } = useLanguage();
   const colors = getAccessibleColors();
   const fontSizes = getFontSize();
 
-  // Configuración de celdas mejorada
-  const CELL_SIZE = 40;
-  const CELL_MARGIN = 4;
+  // Función automática para encontrar palabras en cualquier dirección
+  const findWordInGrid = (startCell: {row: number, col: number}) => {
+    try {
+      const directions = [
+        [-1, -1], [-1, 0], [-1, 1], // arriba-izq, arriba, arriba-der
+        [0, -1],           [0, 1],  // izquierda, derecha
+        [1, -1],  [1, 0],  [1, 1]   // abajo-izq, abajo, abajo-der
+      ];
 
-  // Sistema de selección simplificado y más preciso
+      for (const [rowDir, colDir] of directions) {
+        for (let len = 3; len <= 8; len++) {
+          const path: {row: number, col: number}[] = [];
+          let valid = true;
+
+          for (let i = 0; i < len; i++) {
+            const row = startCell.row + (i * rowDir);
+            const col = startCell.col + (i * colDir);
+
+            if (row < 0 || row >= GRID_DATA.length || 
+                col < 0 || col >= GRID_DATA[0].length) {
+              valid = false;
+              break;
+            }
+            path.push({ row, col });
+          }
+
+          if (valid && path.length >= 3) {
+            const selectedWord = path.map((cell: {row: number, col: number}) => GRID_DATA[cell.row][cell.col]).join('');
+            
+            // Verificar si esta palabra existe en nuestra lista
+            const foundWord = wordsFound.find((word: any) => 
+              word.word === selectedWord && !word.found
+            );
+
+            if (foundWord) {
+              return path;
+            }
+          }
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Error en findWordInGrid:', error);
+      return null;
+    }
+  };
+
+  // Configuración de celdas optimizada
+  const CELL_SIZE = 28;
+  const CELL_MARGIN = 1;
+
+  // Sistema de selección simplificado y seguro
   const handleCellPress = (row: number, col: number) => {
-    if (!isSelecting) {
-      // Iniciar nueva selección
-      setIsSelecting(true);
-      setStartCell({ row, col });
-      setCurrentSelection([{ row, col }]);
-      speakText(`Comenzando desde ${GRID_DATA[row][col]}`);
-    } else if (startCell) {
-      // Continuar selección - crear línea desde startCell hasta esta celda
-      const newPath = getLinePath(startCell, { row, col });
-      setCurrentSelection(newPath);
-    }
-  };
-
-  const handleCellRelease = () => {
-    if (isSelecting && currentSelection.length >= 3) {
-      checkWordFound(currentSelection);
-    }
-    
-    // Reset selection
-    setIsSelecting(false);
-    setCurrentSelection([]);
-    setStartCell(null);
-  };
-
-  // Función mejorada para obtener línea recta entre dos puntos
-  const getLinePath = (start: {row: number, col: number}, end: {row: number, col: number}) => {
-    const path = [];
-    
-    const rowDiff = end.row - start.row;
-    const colDiff = end.col - start.col;
-    const steps = Math.max(Math.abs(rowDiff), Math.abs(colDiff));
-    
-    if (steps === 0) return [start];
-    
-    // Calcular incrementos para cada paso
-    const rowStep = steps > 0 ? rowDiff / steps : 0;
-    const colStep = steps > 0 ? colDiff / steps : 0;
-    
-    for (let i = 0; i <= steps; i++) {
-      const row = Math.round(start.row + rowStep * i);
-      const col = Math.round(start.col + colStep * i);
-      
-      // Verificar que las coordenadas estén dentro de los límites
-      if (row >= 0 && row < GRID_DATA.length && col >= 0 && col < GRID_DATA[0].length) {
-        path.push({ row, col });
+    try {
+      if (!isSelecting) {
+        // Primer toque: marcar inicio
+        setIsSelecting(true);
+        setStartCell({ row, col });
+        setCurrentSelection([{ row, col }]);
+        setEndCell(null);
+        speakText(`Inicio: ${GRID_DATA[row][col]}`);
+      } else if (startCell && !endCell) {
+        // Segundo toque: marcar fin y crear selección
+        setEndCell({ row, col });
+        const path = getPathBetweenCells(startCell, { row, col });
+        setCurrentSelection(path);
+        
+        const selectedWord = path.map((cell: {row: number, col: number}) => GRID_DATA[cell.row][cell.col]).join('');
+        speakText(`Palabra: ${selectedWord}`);
+        
+        // Verificar palabra inmediatamente sin setTimeout
+        checkWordFound(path);
+        
+        // Reset después de verificar
+        setTimeout(() => {
+          resetSelection();
+        }, 1000);
+      } else {
+        // Toque durante selección: resetear y empezar nuevo
+        resetSelection();
+        // Recursivamente iniciar nueva selección
+        setIsSelecting(true);
+        setStartCell({ row, col });
+        setCurrentSelection([{ row, col }]);
+        setEndCell(null);
+        speakText(`Nuevo inicio: ${GRID_DATA[row][col]}`);
       }
+    } catch (error) {
+      console.error('Error en handleCellPress:', error);
+      resetSelection();
     }
-    
-    return path;
   };
 
-  // Función para verificar si una palabra fue encontrada (completamente mejorada)
+  const resetSelection = () => {
+    try {
+      setIsSelecting(false);
+      setStartCell(null);
+      setEndCell(null);
+      setCurrentSelection([]);
+      setIsDragging(false);
+    } catch (error) {
+      console.error('Error en resetSelection:', error);
+    }
+  };
+
+  // Función simplificada para obtener celda desde coordenadas
+  const getCellFromCoordinates = (x: number, y: number): {row: number, col: number} | null => {
+    try {
+      // Constantes que coinciden con los estilos
+      const CELL_SIZE = 30;
+      const CELL_MARGIN = 1; 
+      const TOTAL_CELL_SIZE = CELL_SIZE + (CELL_MARGIN * 2); // 32px total por celda
+      
+      // Calcular índices directamente
+      const col = Math.floor(x / TOTAL_CELL_SIZE);
+      const row = Math.floor(y / TOTAL_CELL_SIZE);
+      
+      // Verificar límites de forma más robusta
+      if (row >= 0 && row < GRID_DATA.length && 
+          col >= 0 && col < GRID_DATA[0].length) {
+        console.log(`Coordenadas (${x}, ${y}) -> Celda [${row}, ${col}]`);
+        return { row, col };
+      }
+      
+      console.log(`Coordenadas fuera de límites: (${x}, ${y})`);
+      return null;
+    } catch (error) {
+      console.error('Error en getCellFromCoordinates:', error);
+      return null;
+    }
+  };
+
+  // Gesto de arrastre para selección de palabras
+  const panGesture = Gesture.Pan()
+    .onStart((event) => {
+      try {
+        console.log('Gesto iniciado en:', event.x, event.y);
+        
+        // Verificar que las coordenadas son válidas
+        if (typeof event.x !== 'number' || typeof event.y !== 'number') {
+          console.log('Coordenadas inválidas:', event.x, event.y);
+          return;
+        }
+        
+        const cell = getCellFromCoordinates(event.x, event.y);
+        if (cell) {
+          console.log('Celda encontrada:', cell);
+          setIsDragging(true);
+          setIsSelecting(true);
+          setStartCell(cell);
+          setCurrentSelection([cell]);
+          
+          // Verificar que la celda existe en GRID_DATA
+          if (GRID_DATA[cell.row] && GRID_DATA[cell.row][cell.col]) {
+            speakText(`Inicio: ${GRID_DATA[cell.row][cell.col]}`);
+          }
+        } else {
+          console.log('No se encontró celda válida');
+        }
+      } catch (error) {
+        console.error('Error en panGesture.onStart:', error);
+      }
+    })
+    .onUpdate((event) => {
+      try {
+        if (!isDragging || !startCell) return;
+        
+        // Verificar coordenadas válidas
+        if (typeof event.x !== 'number' || typeof event.y !== 'number') return;
+        
+        const currentCell = getCellFromCoordinates(event.x, event.y);
+        if (currentCell && startCell) {
+          const path = getPathBetweenCells(startCell, currentCell);
+          if (path && path.length >= 2) {
+            setCurrentSelection(path);
+            setEndCell(currentCell);
+          }
+        }
+      } catch (error) {
+        console.error('Error en panGesture.onUpdate:', error);
+      }
+    })
+    .onEnd(() => {
+      try {
+        console.log('Gesto terminado, selección actual:', currentSelection.length);
+        
+        if (currentSelection && currentSelection.length >= 3) {
+          const selectedWord = currentSelection.map((cell: {row: number, col: number}) => {
+            if (GRID_DATA[cell.row] && GRID_DATA[cell.row][cell.col]) {
+              return GRID_DATA[cell.row][cell.col];
+            }
+            return '';
+          }).join('');
+          
+          console.log('Palabra formada:', selectedWord);
+          speakText(`Palabra: ${selectedWord}`);
+          checkWordFound(currentSelection);
+        }
+        
+        // Reset inmediato para evitar problemas de estado
+        setTimeout(() => {
+          resetSelection();
+        }, 500);
+      } catch (error) {
+        console.error('Error en panGesture.onEnd:', error);
+        resetSelection();
+      }
+    });
+
+  // Función simplificada y robusta para obtener path entre dos celdas
+  const getPathBetweenCells = (start: {row: number, col: number}, end: {row: number, col: number}): {row: number, col: number}[] => {
+    try {
+      const rowDiff = end.row - start.row;
+      const colDiff = end.col - start.col;
+      const path: {row: number, col: number}[] = [];
+
+      // Solo permitir líneas rectas en 8 direcciones
+      if (rowDiff === 0) {
+        // Horizontal
+        const step = colDiff > 0 ? 1 : -1;
+        for (let col = start.col; col !== end.col + step; col += step) {
+          if (col >= 0 && col < GRID_DATA[0].length) {
+            path.push({ row: start.row, col });
+          }
+        }
+      } else if (colDiff === 0) {
+        // Vertical
+        const step = rowDiff > 0 ? 1 : -1;
+        for (let row = start.row; row !== end.row + step; row += step) {
+          if (row >= 0 && row < GRID_DATA.length) {
+            path.push({ row, col: start.col });
+          }
+        }
+      } else if (Math.abs(rowDiff) === Math.abs(colDiff)) {
+        // Diagonal
+        const rowStep = rowDiff > 0 ? 1 : -1;
+        const colStep = colDiff > 0 ? 1 : -1;
+        const steps = Math.abs(rowDiff);
+        
+        for (let i = 0; i <= steps; i++) {
+          const row = start.row + (i * rowStep);
+          const col = start.col + (i * colStep);
+          
+          if (row >= 0 && row < GRID_DATA.length && 
+              col >= 0 && col < GRID_DATA[0].length) {
+            path.push({ row, col });
+          }
+        }
+      }
+
+      return path;
+    } catch (error) {
+      console.error('Error en getPathBetweenCells:', error);
+      return [];
+    }
+  };  // Función segura para verificar palabras
   const checkWordFound = (path: {row: number, col: number}[]) => {
-    if (path.length < 3) {
-      console.log('Path muy corto:', path.length);
-      return;
-    }
-
-    const selectedWord = path.map(cell => GRID_DATA[cell.row][cell.col]).join('');
-    const reversedWord = selectedWord.split('').reverse().join('');
-
-    console.log('=== VERIFICANDO PALABRA ===');
-    console.log('Palabra seleccionada:', selectedWord);
-    console.log('Palabra invertida:', reversedWord);
-    console.log('Path completo:', path);
-    console.log('Longitud del path:', path.length);
-
-    // Verificar cada palabra individualmente
-    for (let index = 0; index < wordsFound.length; index++) {
-      const wordData = wordsFound[index];
-      const wordToFind = wordData.word;
-      
-      console.log(`Comparando con: ${wordToFind} (encontrada: ${wordData.found})`);
-      
-      if ((selectedWord === wordToFind || reversedWord === wordToFind) && !wordData.found) {
-        console.log(`🎉 ¡PALABRA ENCONTRADA: ${wordToFind}!`);
-        
-        // Marcar palabra como encontrada
-        const updatedWords = [...wordsFound];
-        updatedWords[index] = { ...updatedWords[index], found: true };
-        setWordsFound(updatedWords);
-
-        // Actualizar forma geométrica correspondiente
-        const shapeName = wordToFind.toLowerCase();
-        console.log(`Buscando figura con nombre: ${shapeName}`);
-        
-        const updatedShapes = shapes.map(shape => {
-          console.log(`Comparando ${shape.name} con ${shapeName}`);
-          return shape.name === shapeName 
-            ? { ...shape, found: true, color: '#4CAF50' }
-            : shape;
-        });
-        
-        console.log('Figuras actualizadas:', updatedShapes);
-        setShapes(updatedShapes);
-
-        // Marcar celdas como encontradas
-        setSelectedCells(prev => [...prev, ...path]);
-        
-        speakText(`¡Excelente! Encontraste ${wordToFind}`);
-        return; // Salir después de encontrar la palabra
+    try {
+      if (!path || path.length < 3) {
+        console.log('Path inválido o muy corto');
+        return;
       }
-    }
 
-    // Si no se encontró ninguna palabra
-    console.log('❌ Palabra no encontrada en la lista');
-    if (selectedWord.length >= 4) {
-      speakText('Palabra no encontrada, sigue buscando');
+      const selectedWord = path.map(cell => {
+        if (cell.row >= 0 && cell.row < GRID_DATA.length && 
+            cell.col >= 0 && cell.col < GRID_DATA[0].length) {
+          return GRID_DATA[cell.row][cell.col];
+        }
+        return '';
+      }).join('');
+      
+      const reversedWord = selectedWord.split('').reverse().join('');
+
+      console.log('Verificando palabra:', selectedWord);
+
+      // Verificar cada palabra de forma segura
+      for (let index = 0; index < wordsFound.length; index++) {
+        const wordData = wordsFound[index];
+        
+        if (!wordData || !wordData.word) continue;
+        
+        const wordToFind = wordData.word;
+        
+        if ((selectedWord === wordToFind || reversedWord === wordToFind) && !wordData.found) {
+          console.log(`¡Palabra encontrada: ${wordToFind}!`);
+          
+          // Actualizar palabras encontradas de forma segura
+          setWordsFound(prevWords => {
+            const newWords = [...prevWords];
+            if (newWords[index]) {
+              newWords[index] = { ...newWords[index], found: true };
+            }
+            return newWords;
+          });
+
+          // Actualizar figuras de forma segura
+          const shapeName = wordToFind.toLowerCase();
+          setShapes(prevShapes => {
+            return prevShapes.map(shape => 
+              shape.name === shapeName 
+                ? { ...shape, found: true, color: '#4CAF50' }
+                : shape
+            );
+          });
+
+          // Marcar celdas como encontradas
+          setSelectedCells(prev => [...prev, ...path]);
+          
+          speakText(`¡Encontraste ${wordToFind}!`);
+          return;
+        }
+      }
+
+      console.log('Palabra no encontrada:', selectedWord);
+      speakText('Sigue buscando');
+      
+    } catch (error) {
+      console.error('Error en checkWordFound:', error);
+      speakText('Error al verificar palabra');
     }
   };
 
@@ -226,13 +415,16 @@ export default function GeoSopaGameScreen() {
     }
   };
 
-  // Función para determinar si una celda está seleccionada o encontrada
+  // Función para determinar el estilo de cada celda
   const getCellStyle = (row: number, col: number) => {
+    const isStartCell = startCell && startCell.row === row && startCell.col === col;
     const isInCurrentSelection = currentSelection.some(cell => cell.row === row && cell.col === col);
     const isFound = selectedCells.some(cell => cell.row === row && cell.col === col);
     
     if (isFound) {
       return [styles.gridCell, styles.foundCell];
+    } else if (isStartCell && isSelecting) {
+      return [styles.gridCell, styles.startCell];
     } else if (isInCurrentSelection) {
       return [styles.gridCell, styles.selectedCell];
     }
@@ -257,57 +449,29 @@ export default function GeoSopaGameScreen() {
 
         {/* Word Search Grid */}
         <View style={styles.gameContainer}>
-          <View style={styles.gridContainer}>
-            {GRID_DATA.map((row, rowIndex) => (
-              <View key={rowIndex} style={styles.gridRow}>
-                {row.map((letter, colIndex) => (
-                  <TouchableOpacity
-                    key={`${rowIndex}-${colIndex}`}
-                    style={getCellStyle(rowIndex, colIndex)}
-                    onPress={() => handleCellPress(rowIndex, colIndex)}
-                    onPressOut={handleCellRelease}
-                    activeOpacity={0.5}
-                    accessibilityLabel={`Letra ${letter} en fila ${rowIndex + 1}, columna ${colIndex + 1}`}
-                    accessibilityRole="button"
-                  >
-                    <Text style={styles.gridLetter}>{letter}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ))}
-          </View>
+          <GestureDetector gesture={panGesture}>
+            <View style={styles.gridContainer}>
+              {GRID_DATA.map((row, rowIndex) => (
+                <View key={rowIndex} style={styles.gridRow}>
+                  {row.map((letter, colIndex) => (
+                    <TouchableOpacity
+                      key={`${rowIndex}-${colIndex}`}
+                      style={getCellStyle(rowIndex, colIndex)}
+                      onPress={() => handleCellPress(rowIndex, colIndex)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.gridLetter}>{letter}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </View>
+          </GestureDetector>
 
-          {/* Progress and Help Display */}
-          <View style={styles.progressContainer}>
-            <Text style={[styles.progressText, { fontSize: fontSizes.base }]}>
-              Palabras encontradas: {foundCount}/{wordsFound.length}
-            </Text>
-            {isSelecting && currentSelection.length > 0 && (
-              <Text style={[styles.selectionText, { fontSize: fontSizes.small }]}>
-                Seleccionando: {currentSelection.map(cell => GRID_DATA[cell.row][cell.col]).join('')}
-              </Text>
-            )}
+
             
-            {/* Botón de debug para probar */}
-            <TouchableOpacity
-              style={styles.debugButton}
-              onPress={() => {
-                console.log('=== DEBUG INFO ===');
-                console.log('Palabras a encontrar:', wordsFound.map(w => w.word));
-                console.log('Estado de las figuras:', shapes);
-                // Probar CUADRADO manualmente
-                const testPath = [
-                  {row: 2, col: 0}, {row: 2, col: 1}, {row: 2, col: 2}, 
-                  {row: 2, col: 3}, {row: 2, col: 4}, {row: 2, col: 5}, 
-                  {row: 2, col: 6}, {row: 2, col: 7}
-                ];
-                console.log('Probando CUADRADO:', testPath.map(cell => GRID_DATA[cell.row][cell.col]).join(''));
-                checkWordFound(testPath);
-              }}
-            >
-              <Text style={styles.debugButtonText}>🔍 Debug</Text>
-            </TouchableOpacity>
-          </View>
+
+
 
           {/* Geometric Shapes Display */}
           <View style={styles.shapesContainer}>
@@ -380,17 +544,10 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   gridContainer: {
-    backgroundColor: 'white',
-    borderRadius: 15,
-    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 8,
+    padding: 12,
     marginBottom: 20,
-    borderWidth: 4,
-    borderColor: '#8B4513',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 6,
   },
   progressContainer: {
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
@@ -413,42 +570,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   gridCell: {
-    width: 40,
-    height: 40,
+    width: 30,
+    height: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    margin: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
+    margin: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 4,
   },
   selectedCell: {
-    backgroundColor: 'rgba(74, 144, 226, 0.9)',
-    borderColor: '#4A90E2',
-    borderWidth: 3,
-    transform: [{ scale: 1.05 }],
-    shadowOpacity: 0.3,
+    backgroundColor: 'rgba(74, 144, 226, 0.7)',
+  },
+  startCell: {
+    backgroundColor: 'rgba(255, 193, 7, 0.7)',
   },
   foundCell: {
-    backgroundColor: 'rgba(76, 175, 80, 0.9)',
-    borderColor: '#4CAF50',
-    borderWidth: 3,
-    shadowOpacity: 0.3,
+    backgroundColor: 'rgba(76, 175, 80, 0.7)',
   },
   gridLetter: {
-    fontSize: 22,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    textShadowColor: 'rgba(255, 255, 255, 0.8)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   shapesContainer: {
     flexDirection: 'row',
