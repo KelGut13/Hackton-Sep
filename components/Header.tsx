@@ -1,7 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { signOut } from 'firebase/auth';
 import React, { useState } from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { auth } from '../config/firebase';
 import { useAccessibility } from '../contexts/AccessibilityContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface HeaderProps {
   title: string;
@@ -14,42 +18,13 @@ export default function Header({
   showLanguageToggle = true, 
   showProfile = true 
 }: HeaderProps) {
-  const [currentLanguage, setCurrentLanguage] = useState('es');
   const [showSettings, setShowSettings] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   
   const { getFontSize, speakText } = useAccessibility();
+  const { currentLanguage, toggleLanguage, currentTexts } = useLanguage();
   const fontSizes = getFontSize();
-
-  const texts = {
-    es: {
-      settings: 'Configuraciones',
-      userProfile: 'Perfil de Usuario',
-      darkMode: 'Modo Oscuro',
-      changePassword: 'Cambiar Contraseña',
-      changeName: 'Cambiar Nombre',
-      logout: 'Cerrar Sesión',
-      close: 'Cerrar'
-    },
-    en: {
-      settings: 'Settings',
-      userProfile: 'User Profile',
-      darkMode: 'Dark Mode',
-      changePassword: 'Change Password',
-      changeName: 'Change Name',
-      logout: 'Logout',
-      close: 'Close'
-    }
-  };
-
-  const currentTexts = texts[currentLanguage as keyof typeof texts];
-
-  const toggleLanguage = () => {
-    const newLang = currentLanguage === 'es' ? 'en' : 'es';
-    setCurrentLanguage(newLang);
-    speakText(`Idioma cambiado a ${newLang === 'es' ? 'español' : 'inglés'}`);
-  };
 
   const handleSettingsPress = () => {
     setShowSettings(true);
@@ -59,6 +34,39 @@ export default function Header({
   const handleProfilePress = () => {
     setShowUserMenu(true);
     speakText('Abriendo menú de usuario');
+  };
+
+  const handleLanguageToggle = () => {
+    toggleLanguage();
+    speakText(`Idioma cambiado a ${currentLanguage === 'es' ? 'inglés' : 'español'}`);
+  };
+
+  const handleLogout = async () => {
+    Alert.alert(
+      currentTexts.logout,
+      currentTexts.logoutConfirm,
+      [
+        {
+          text: currentTexts.cancel,
+          style: 'cancel'
+        },
+        {
+          text: currentTexts.logout,
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut(auth);
+              setShowUserMenu(false);
+              speakText('Sesión cerrada exitosamente');
+              router.replace('/(auth)/login');
+            } catch (error) {
+              console.error('Error al cerrar sesión:', error);
+              Alert.alert(currentTexts.error, currentTexts.logoutError);
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -84,7 +92,7 @@ export default function Header({
         {showLanguageToggle && (
           <TouchableOpacity
             style={styles.languageButton}
-            onPress={toggleLanguage}
+            onPress={handleLanguageToggle}
             accessibilityLabel={`Cambiar idioma a ${currentLanguage === 'es' ? 'inglés' : 'español'}`}
             accessibilityRole="button"
           >
@@ -186,6 +194,7 @@ export default function Header({
 
             <TouchableOpacity
               style={styles.userOption}
+              onPress={handleLogout}
               accessibilityLabel={currentTexts.logout}
               accessibilityRole="button"
             >

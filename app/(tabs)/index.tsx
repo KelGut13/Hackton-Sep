@@ -1,84 +1,22 @@
-import { auth } from '@/config/firebase';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { signOut } from 'firebase/auth';
 import React, { useState } from 'react';
-import { Alert, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Header from '../../components/Header';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 export default function HomeScreen() {
   const [completedActivities, setCompletedActivities] = useState(3);
   const totalActivities = 12;
   
-  // Contexto de accesibilidad
+  // Contexto de accesibilidad y idioma
   const { getAccessibleColors, getFontSize, speakText } = useAccessibility();
+  const { currentTexts } = useLanguage();
   
   const colors = getAccessibleColors();
   const fontSizes = getFontSize();
-
-  const texts = {
-    es: {
-      geoSopa: 'GeoSopa',
-      puntoGo: 'PuntoGo',
-      matematico: 'P.Matemático',
-      languages: 'Lenguas',
-      scientificThought: 'Saberes y Pensamiento Científico',
-      progress: 'Progreso',
-      settings: 'Configuraciones',
-      userProfile: 'Perfil de Usuario',
-      darkMode: 'Modo Oscuro',
-      language: 'Idioma',
-      changePassword: 'Cambiar Contraseña',
-      changeName: 'Cambiar Nombre',
-      logout: 'Cerrar Sesión'
-    },
-    en: {
-      geoSopa: 'GeoSoup',
-      puntoGo: 'PuntoGo',
-      matematico: 'P.Mathematical',
-      languages: 'Languages',
-      scientificThought: 'Knowledge and Scientific Thought',
-      progress: 'Progress',
-      settings: 'Settings',
-      userProfile: 'User Profile',
-      darkMode: 'Dark Mode',
-      language: 'Language',
-      changePassword: 'Change Password',
-      changeName: 'Change Name',
-      logout: 'Logout'
-    }
-  };
-
-  // Por defecto usar español para los textos
-  const currentTexts = texts.es;
-
-  const handleLogout = async () => {
-    Alert.alert(
-      '🚪 Cerrar Sesión',
-      '¿Estás seguro que deseas cerrar sesión?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel'
-        },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await signOut(auth);
-              router.replace('/(auth)/login');
-            } catch (error) {
-              console.error('Error al cerrar sesión:', error);
-              Alert.alert('Error', 'No se pudo cerrar sesión. Intenta nuevamente.');
-            }
-          }
-        }
-      ]
-    );
-  };
 
   const activities = [
     { 
@@ -206,7 +144,7 @@ export default function HomeScreen() {
               {currentTexts.languages}
             </Text>
             <View style={styles.activitiesGrid}>
-              {activities.slice(0, 2).map(renderActivity)}
+              {activities.slice(1, 2).map(renderActivity)}
             </View>
           </View>
 
@@ -219,7 +157,7 @@ export default function HomeScreen() {
               {currentTexts.scientificThought}
             </Text>
             <View style={styles.activitiesGrid}>
-              {activities.slice(2, 6).map(renderActivity)}
+              {[activities[0], ...activities.slice(2, 6)].map(renderActivity)}
             </View>
           </View>
         </ScrollView>
