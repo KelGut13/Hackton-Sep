@@ -100,6 +100,11 @@ export default function RegisterScreen() {
     loadRoles();
   }, []);
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleRegister = async () => {
     // Validar campos
     if (!name.trim()) {
@@ -111,6 +116,13 @@ export default function RegisterScreen() {
     if (!email.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
       speakText('Error: Ingresa tu correo electrónico');
+      return;
+    }
+
+    // Validar formato de correo
+    if (!validateEmail(email.trim())) {
+      Alert.alert('Error', 'Por favor ingresa un correo electrónico válido (ejemplo: usuario@correo.com)');
+      speakText('Error: Formato de correo electrónico inválido');
       return;
     }
     

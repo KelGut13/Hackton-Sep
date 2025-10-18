@@ -18,11 +18,23 @@ export default function LoginScreen() {
   const colors = getAccessibleColors();
   const fontSizes = getFontSize();
 
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   const handleLogin = async () => {
     // Validar campos
     if (!email.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
       speakText('Error: Ingresa tu correo electrónico');
+      return;
+    }
+
+    // Validar formato de correo
+    if (!validateEmail(email.trim())) {
+      Alert.alert('Error', 'Por favor ingresa un correo electrónico válido (ejemplo: usuario@correo.com)');
+      speakText('Error: Formato de correo electrónico inválido');
       return;
     }
 
