@@ -36,9 +36,42 @@ export default function RegisterScreen() {
         if (screenReaderEnabled) {
           Speech.speak(`${fetchedRoles.length} roles disponibles`);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error cargando roles:', error);
-        Alert.alert('Error', 'No se pudieron cargar los roles. Por favor intenta de nuevo.');
+        
+        // Si es error de permisos, usar roles por defecto
+        if (error.code === 'permission-denied' || error.message?.includes('permissions')) {
+          Alert.alert(
+            '⚠️ Roles no inicializados',
+            'Los roles aún no están configurados en Firebase.\n\n' +
+            '1. Ve a la pestaña "Firebase" en la app\n' +
+            '2. Presiona "Inicializar Roles"\n\n' +
+            'Por ahora, usaremos roles temporales para que puedas continuar.',
+            [{ text: 'Entendido' }]
+          );
+          
+          // Roles por defecto temporales
+          setRoles([
+            {
+              id: 'temp-student',
+              name: 'Alumno',
+              value: 'student',
+              description: 'Usuario que realiza actividades y aprende',
+              permissions: ['view_lessons', 'complete_activities', 'view_progress'],
+              createdAt: new Date()
+            },
+            {
+              id: 'temp-teacher',
+              name: 'Maestro',
+              value: 'teacher',
+              description: 'Usuario que crea y gestiona lecciones',
+              permissions: ['view_lessons', 'create_lessons', 'edit_lessons', 'view_student_progress'],
+              createdAt: new Date()
+            }
+          ]);
+        } else {
+          Alert.alert('Error', 'No se pudieron cargar los roles. Por favor verifica tu conexión.');
+        }
       } finally {
         setLoadingRoles(false);
       }

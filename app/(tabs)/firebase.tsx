@@ -1,14 +1,35 @@
-// Temporalmente comentado - Firebase no instalado
-// import FirebaseTest from '@/components/FirebaseTest';
-
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import FirebaseDiagnostic from '@/components/FirebaseDiagnostic';
+import InitRoles from '@/components/InitRoles';
+import React, { useState } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function FirebaseTab() {
+  const [activeTab, setActiveTab] = useState<'diagnostic' | 'init'>('diagnostic');
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Firebase</Text>
-      <Text style={styles.subtitle}>Esta sección estará disponible próximamente</Text>
+      <View style={styles.tabBar}>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'diagnostic' && styles.activeTab]}
+          onPress={() => setActiveTab('diagnostic')}
+        >
+          <Text style={[styles.tabText, activeTab === 'diagnostic' && styles.activeTabText]}>
+            🔍 Diagnóstico
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'init' && styles.activeTab]}
+          onPress={() => setActiveTab('init')}
+        >
+          <Text style={[styles.tabText, activeTab === 'init' && styles.activeTabText]}>
+            🔧 Inicializar Roles
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.content}>
+        {activeTab === 'diagnostic' ? <FirebaseDiagnostic /> : <InitRoles />}
+      </ScrollView>
     </View>
   );
 }
@@ -16,20 +37,33 @@ export default function FirebaseTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#f8fafc',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 8,
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748b',
+  tab: {
+    flex: 1,
+    paddingVertical: 15,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTab: {
+    borderBottomColor: '#4CAF50',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  activeTabText: {
+    color: '#4CAF50',
+  },
+  content: {
+    flex: 1,
   },
 });
-
-// export default FirebaseTest;
