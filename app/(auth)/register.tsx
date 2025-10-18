@@ -1,17 +1,23 @@
+import { auth } from '@/config/firebase';
+import { createUser, getRoles, type Role } from '@/services/database';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as Speech from 'expo-speech';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
-import { AccessibilityInfo, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('');
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingRoles, setLoadingRoles] = useState(true);
   
   // Estados para accesibilidad
   const [highContrast, setHighContrast] = useState(false);
@@ -20,24 +26,123 @@ export default function RegisterScreen() {
   const [showAccessibilityMenu, setShowAccessibilityMenu] = useState(false);
   const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
 
-  const roles = [
-    { label: 'Alumno', value: 'student' },
-    { label: 'Maestro', value: 'teacher' }
-  ];
+  // Cargar roles desde Firebase
+  useEffect(() => {
+    const loadRoles = async () => {
+      try {
+        setLoadingRoles(true);
+        const fetchedRoles = await getRoles();
+        setRoles(fetchedRoles);
+        if (screenReaderEnabled) {
+          Speech.speak(`${fetchedRoles.length} roles disponibles`);
+        }
+      } catch (error) {
+        console.error('Error cargando roles:', error);
+        Alert.alert('Error', 'No se pudieron cargar los roles. Por favor intenta de nuevo.');
+      } finally {
+        setLoadingRoles(false);
+      }
+    };
 
-  const handleRegister = () => {
-    // Aquí implementarías tu lógica de registro
-    if (screenReaderEnabled) {
-      Speech.speak("Registrando usuario, por favor espera");
+    loadRoles();
+  }, []);
+
+  const handleRegister = async () => {
+    // Validar campos
+    if (!name.trim()) {
+      Alert.alert('Error', 'Por favor ingresa tu nombre');
+      if (screenReaderEnabled) Speech.speak('Error: Ingresa tu nombre');
+      return;
     }
-    router.replace('/(tabs)'); // Navega a la página principal después del registro
+    
+    if (!email.trim()) {
+      Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
+      if (screenReaderEnabled) Speech.speak('Error: Ingresa tu correo electrónico');
+      return;
+    }
+    
+    if (!password || password.length < 6) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      if (screenReaderEnabled) Speech.speak('Error: La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    
+    if (!selectedRole) {
+      Alert.alert('Error', 'Por favor selecciona un rol');
+      if (screenReaderEnabled) Speech.speak('Error: Selecciona un rol');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      if (screenReaderEnabled) {
+        Speech.speak("Registrando usuario, por favor espera");
+      }
+
+      // 1. Crear usuario en Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userId = userCredential.user.uid;
+
+      // 2. Guardar datos adicionales en Firestore
+      await createUser({
+        name: name.trim(),
+        email: email.trim(),
+        createdAt: new Date(),
+        progress: 0,
+        roleId: selectedRole.id!, // Guardar el ID del rol
+        accessibilityPreferences: {
+          highContrast,
+          colorBlindMode,
+          fontSize,
+          screenReaderEnabled
+        }
+      });
+
+      // 3. Éxito - navegar a la app
+      if (screenReaderEnabled) {
+        Speech.speak('Usuario registrado exitosamente. Bienvenido a EduPlay');
+      }
+      
+      Alert.alert(
+        'Registro exitoso',
+        '¡Bienvenido a EduPlay!',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/(tabs)')
+          }
+        ]
+      );
+
+    } catch (error: any) {
+      setLoading(false);
+      console.error('Error en registro:', error);
+      
+      let errorMessage = 'Hubo un error al registrar el usuario';
+      
+      // Mensajes de error personalizados
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'Este correo ya está registrado';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'El correo electrónico no es válido';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'La contraseña es muy débil';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Error de conexión. Verifica tu internet';
+      }
+      
+      Alert.alert('Error de Registro', errorMessage);
+      if (screenReaderEnabled) {
+        Speech.speak(`Error: ${errorMessage}`);
+      }
+    }
   };
 
-  const selectRole = (selectedRole: { label: string; value: string }) => {
-    setRole(selectedRole.label);
+  const selectRole = (role: Role) => {
+    setSelectedRole(role);
     setShowRoleModal(false);
     if (screenReaderEnabled) {
-      Speech.speak(`Rol seleccionado: ${selectedRole.label}`);
+      Speech.speak(`Rol seleccionado: ${role.name}`);
     }
   };
 
@@ -267,19 +372,28 @@ export default function RegisterScreen() {
             <TouchableOpacity 
               style={[styles.roleSelector, { backgroundColor: colors.inputBg }]}
               onPress={() => {
+                if (loadingRoles) {
+                  Alert.alert('Cargando', 'Espera mientras se cargan los roles');
+                  return;
+                }
                 setShowRoleModal(true);
                 speakText("Abriendo selector de rol");
               }}
               accessibilityLabel="Selector de rol"
-              accessibilityHint={`Rol actual: ${role || 'Ninguno seleccionado'}. Toca para cambiar`}
+              accessibilityHint={`Rol actual: ${selectedRole?.name || 'Ninguno seleccionado'}. Toca para cambiar`}
               accessibilityRole="button"
+              disabled={loadingRoles}
             >
-              <Text style={[styles.roleSelectorText, { 
-                color: colors.inputText,
-                fontSize: fontSizes.base 
-              }]}>
-                {role || 'Seleccionar rol'}
-              </Text>
+              {loadingRoles ? (
+                <ActivityIndicator size="small" color={colors.inputText} />
+              ) : (
+                <Text style={[styles.roleSelectorText, { 
+                  color: colors.inputText,
+                  fontSize: fontSizes.base 
+                }]}>
+                  {selectedRole?.name || 'Seleccionar rol'}
+                </Text>
+              )}
               <Ionicons name="chevron-down" size={24} color={colors.inputText} />
             </TouchableOpacity>
           </View>
@@ -287,19 +401,25 @@ export default function RegisterScreen() {
           {/* Botón REGISTRARSE */}
           <TouchableOpacity 
             style={[styles.button, { 
-              backgroundColor: colors.buttonBg 
+              backgroundColor: colors.buttonBg,
+              opacity: loading ? 0.7 : 1
             }]}
             onPress={handleRegister}
+            disabled={loading}
             accessibilityLabel="Botón de registrarse"
             accessibilityHint="Toca para crear tu cuenta con la información ingresada"
             accessibilityRole="button"
           >
-            <Text style={[styles.buttonText, { 
-              color: colors.buttonText,
-              fontSize: fontSizes.button 
-            }]}>
-              REGISTRARSE
-            </Text>
+            {loading ? (
+              <ActivityIndicator color={colors.buttonText} size="small" />
+            ) : (
+              <Text style={[styles.buttonText, { 
+                color: colors.buttonText,
+                fontSize: fontSizes.button 
+              }]}>
+                REGISTRARSE
+              </Text>
+            )}
           </TouchableOpacity>
 
           {/* Decoraciones inferiores - Árboles y flores */}
@@ -341,17 +461,30 @@ export default function RegisterScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Seleccionar Rol</Text>
-            {roles.map((roleOption, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.roleOption}
-                onPress={() => selectRole(roleOption)}
-                accessibilityLabel={`Seleccionar rol: ${roleOption.label}`}
-                accessibilityRole="button"
-              >
-                <Text style={styles.roleOptionText}>{roleOption.label}</Text>
-              </TouchableOpacity>
-            ))}
+            {loadingRoles ? (
+              <ActivityIndicator size="large" color="#4CAF50" style={{ marginVertical: 20 }} />
+            ) : roles.length === 0 ? (
+              <Text style={styles.roleOptionText}>No hay roles disponibles</Text>
+            ) : (
+              roles.map((roleOption) => (
+                <TouchableOpacity
+                  key={roleOption.id}
+                  style={[
+                    styles.roleOption,
+                    selectedRole?.id === roleOption.id && styles.roleOptionSelected
+                  ]}
+                  onPress={() => selectRole(roleOption)}
+                  accessibilityLabel={`Seleccionar rol: ${roleOption.name}`}
+                  accessibilityHint={roleOption.description}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.roleOptionText}>{roleOption.name}</Text>
+                  {roleOption.description && (
+                    <Text style={styles.roleDescription}>{roleOption.description}</Text>
+                  )}
+                </TouchableOpacity>
+              ))
+            )}
             <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => setShowRoleModal(false)}
@@ -758,10 +891,21 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     alignItems: 'center',
   },
+  roleOptionSelected: {
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: '#2E7D32',
+  },
   roleOptionText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  roleDescription: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
+    marginTop: 5,
+    textAlign: 'center',
   },
   cancelButton: {
     width: '100%',
