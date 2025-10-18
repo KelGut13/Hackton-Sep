@@ -105,30 +105,100 @@ export default function RegisterScreen() {
     return emailRegex.test(email);
   };
 
+  const validateName = (name: string): { valid: boolean; message: string } => {
+    const trimmedName = name.trim();
+    
+    // Verificar que no esté vacío
+    if (!trimmedName) {
+      return { valid: false, message: 'Por favor ingresa tu nombre completo' };
+    }
+    
+    // Verificar longitud mínima (al menos 3 caracteres)
+    if (trimmedName.length < 3) {
+      return { valid: false, message: 'El nombre debe tener al menos 3 caracteres' };
+    }
+    
+    // Verificar que contenga al menos 2 palabras (nombre y apellido)
+    const words = trimmedName.split(/\s+/).filter(word => word.length > 0);
+    if (words.length < 2) {
+      return { valid: false, message: 'Por favor ingresa tu nombre completo (nombre y apellido)' };
+    }
+    
+    // Verificar que solo contenga letras, espacios y acentos
+    const nameRegex = /^[a-záéíóúñüA-ZÁÉÍÓÚÑÜ\s]+$/;
+    if (!nameRegex.test(trimmedName)) {
+      return { valid: false, message: 'El nombre solo puede contener letras y espacios' };
+    }
+    
+    // Verificar longitud máxima
+    if (trimmedName.length > 50) {
+      return { valid: false, message: 'El nombre es demasiado largo (máximo 50 caracteres)' };
+    }
+    
+    return { valid: true, message: '' };
+  };
+
+  const validatePassword = (password: string): { valid: boolean; message: string } => {
+    // Verificar que no esté vacío
+    if (!password) {
+      return { valid: false, message: 'Por favor ingresa una contraseña' };
+    }
+    
+    // Verificar longitud mínima
+    if (password.length < 6) {
+      return { valid: false, message: 'La contraseña debe tener al menos 6 caracteres' };
+    }
+    
+    // Verificar longitud máxima
+    if (password.length > 50) {
+      return { valid: false, message: 'La contraseña es demasiado larga (máximo 50 caracteres)' };
+    }
+    
+    // Verificar que contenga al menos una letra
+    if (!/[a-zA-Z]/.test(password)) {
+      return { valid: false, message: 'La contraseña debe contener al menos una letra' };
+    }
+    
+    // Verificar que contenga al menos un número
+    if (!/\d/.test(password)) {
+      return { valid: false, message: 'La contraseña debe contener al menos un número' };
+    }
+    
+    // Verificar que no tenga espacios
+    if (/\s/.test(password)) {
+      return { valid: false, message: 'La contraseña no puede contener espacios' };
+    }
+    
+    return { valid: true, message: '' };
+  };
+
   const handleRegister = async () => {
-    // Validar campos
-    if (!name.trim()) {
-      Alert.alert('Error', 'Por favor ingresa tu nombre');
-      speakText('Error: Ingresa tu nombre');
+    // Validar nombre completo
+    const nameValidation = validateName(name);
+    if (!nameValidation.valid) {
+      Alert.alert('Error', nameValidation.message);
+      speakText(`Error: ${nameValidation.message}`);
       return;
     }
     
+    // Validar correo electrónico
     if (!email.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
       speakText('Error: Ingresa tu correo electrónico');
       return;
     }
 
-    // Validar formato de correo
     if (!validateEmail(email.trim())) {
       Alert.alert('Error', 'Por favor ingresa un correo electrónico válido (ejemplo: usuario@correo.com)');
       speakText('Error: Formato de correo electrónico inválido');
       return;
     }
     
-    if (!password || password.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      speakText('Error: La contraseña debe tener al menos 6 caracteres');
+    // Validar contraseña
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
+      Alert.alert('Error', passwordValidation.message);
+      speakText(`Error: ${passwordValidation.message}`);
       return;
     }
     
@@ -302,6 +372,7 @@ export default function RegisterScreen() {
               accessibilityRole="text"
               onFocus={() => speakText("Campo de nombre completo")}
             />
+            <Text style={styles.helperText}>• Nombre y apellido (mínimo 3 caracteres)</Text>
 
             <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>CORREO</Text>
             <TextInput
@@ -321,6 +392,7 @@ export default function RegisterScreen() {
               accessibilityRole="text"
               onFocus={() => speakText("Campo de correo electrónico")}
             />
+            <Text style={styles.helperText}>• Ejemplo: usuario@correo.com</Text>
             
             <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>CONTRASEÑA</Text>
             <View style={[styles.passwordContainer, { backgroundColor: colors.inputBg }]}>
@@ -353,6 +425,7 @@ export default function RegisterScreen() {
                 />
               </TouchableOpacity>
             </View>
+            <Text style={styles.helperText}>• Mínimo 6 caracteres • Al menos 1 letra • Al menos 1 número</Text>
 
             <Text style={[styles.label, { color: colors.labelText, fontSize: fontSizes.label }]}>ROL</Text>
             <TouchableOpacity
@@ -647,6 +720,14 @@ const styles = StyleSheet.create({
   eyeIcon: {
     padding: 5,
     marginLeft: 10,
+  },
+  helperText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 11,
+    marginTop: -10,
+    marginBottom: 15,
+    marginLeft: 5,
+    fontStyle: 'italic',
   },
   roleSelector: {
     width: '100%',
