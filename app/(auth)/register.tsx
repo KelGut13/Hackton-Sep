@@ -1,12 +1,12 @@
 import { auth } from '@/config/firebase';
-import { useAccessibility } from '@/contexts/AccessibilityContext';
 import { createUser, getRoles, type Role } from '@/services/database';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import * as Speech from 'expo-speech';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
@@ -19,16 +19,12 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [loadingRoles, setLoadingRoles] = useState(true);
   
-  // Usar el contexto de accesibilidad global
-  const { 
-    getAccessibleColors, 
-    getFontSize, 
-    speakText,
-    screenReaderEnabled,
-    highContrast,
-    colorBlindMode,
-    fontSize
-  } = useAccessibility();
+  // Estados para accesibilidad
+  const [highContrast, setHighContrast] = useState(false);
+  const [colorBlindMode, setColorBlindMode] = useState(false);
+  const [fontSize, setFontSize] = useState('normal'); // 'small', 'normal', 'large'
+  // Modal de accesibilidad ahora manejado globalmente
+  const [screenReaderEnabled, setScreenReaderEnabled] = useState(false);
 
   // Cargar roles desde Firebase
   useEffect(() => {
@@ -37,10 +33,45 @@ export default function RegisterScreen() {
         setLoadingRoles(true);
         const fetchedRoles = await getRoles();
         setRoles(fetchedRoles);
-        speakText(`${fetchedRoles.length} roles disponibles`);
-      } catch (error) {
+        if (screenReaderEnabled) {
+          Speech.speak(`${fetchedRoles.length} roles disponibles`);
+        }
+      } catch (error: any) {
         console.error('Error cargando roles:', error);
-        Alert.alert('Error', 'No se pudieron cargar los roles. Por favor intenta de nuevo.');
+        
+        // Si es error de permisos, usar roles por defecto
+        if (error.code === 'permission-denied' || error.message?.includes('permissions')) {
+          Alert.alert(
+            '⚠️ Roles no inicializados',
+            'Los roles aún no están configurados en Firebase.\n\n' +
+            '1. Ve a la pestaña "Firebase" en la app\n' +
+            '2. Presiona "Inicializar Roles"\n\n' +
+            'Por ahora, usaremos roles temporales para que puedas continuar.',
+            [{ text: 'Entendido' }]
+          );
+          
+          // Roles por defecto temporales
+          setRoles([
+            {
+              id: 'temp-student',
+              name: 'Alumno',
+              value: 'student',
+              description: 'Usuario que realiza actividades y aprende',
+              permissions: ['view_lessons', 'complete_activities', 'view_progress'],
+              createdAt: new Date()
+            },
+            {
+              id: 'temp-teacher',
+              name: 'Maestro',
+              value: 'teacher',
+              description: 'Usuario que crea y gestiona lecciones',
+              permissions: ['view_lessons', 'create_lessons', 'edit_lessons', 'view_student_progress'],
+              createdAt: new Date()
+            }
+          ]);
+        } else {
+          Alert.alert('Error', 'No se pudieron cargar los roles. Por favor verifica tu conexión.');
+        }
       } finally {
         setLoadingRoles(false);
       }
@@ -53,31 +84,33 @@ export default function RegisterScreen() {
     // Validar campos
     if (!name.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu nombre');
-      speakText('Error: Ingresa tu nombre');
+      if (screenReaderEnabled) Speech.speak('Error: Ingresa tu nombre');
       return;
     }
     
     if (!email.trim()) {
       Alert.alert('Error', 'Por favor ingresa tu correo electrónico');
-      speakText('Error: Ingresa tu correo electrónico');
+      if (screenReaderEnabled) Speech.speak('Error: Ingresa tu correo electrónico');
       return;
     }
     
     if (!password || password.length < 6) {
       Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
-      speakText('Error: La contraseña debe tener al menos 6 caracteres');
+      if (screenReaderEnabled) Speech.speak('Error: La contraseña debe tener al menos 6 caracteres');
       return;
     }
     
     if (!selectedRole) {
       Alert.alert('Error', 'Por favor selecciona un rol');
-      speakText('Error: Selecciona un rol');
+      if (screenReaderEnabled) Speech.speak('Error: Selecciona un rol');
       return;
     }
 
     try {
       setLoading(true);
-      speakText("Registrando usuario, por favor espera");
+      if (screenReaderEnabled) {
+        Speech.speak("Registrando usuario, por favor espera");
+      }
 
       // 1. Crear usuario en Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -99,7 +132,9 @@ export default function RegisterScreen() {
       });
 
       // 3. Éxito - navegar a la app
-      speakText('Usuario registrado exitosamente. Bienvenido a EduPlay');
+      if (screenReaderEnabled) {
+        Speech.speak('Usuario registrado exitosamente. Bienvenido a EduPlay');
+      }
       
       Alert.alert(
         'Registro exitoso',
@@ -130,14 +165,93 @@ export default function RegisterScreen() {
       }
       
       Alert.alert('Error de Registro', errorMessage);
-      speakText(`Error: ${errorMessage}`);
+      if (screenReaderEnabled) {
+        Speech.speak(`Error: ${errorMessage}`);
+      }
     }
   };
 
   const selectRole = (role: Role) => {
     setSelectedRole(role);
     setShowRoleModal(false);
-    speakText(`Rol seleccionado: ${role.name}`);
+    if (screenReaderEnabled) {
+      Speech.speak(`Rol seleccionado: ${role.name}`);
+    }
+  };
+
+  // Función para leer texto en voz alta
+  const speakText = (text: string) => {
+    if (screenReaderEnabled) {
+      Speech.speak(text, {
+        language: 'es-ES', // Español
+        pitch: 1.0,
+        rate: 0.8, // Velocidad más lenta para mejor comprensión
+      });
+    }
+  };
+
+  // Detectar si el lector de pantalla del sistema está activo
+  useEffect(() => {
+    const checkScreenReader = async () => {
+      try {
+        const isEnabled = await AccessibilityInfo.isScreenReaderEnabled();
+        setScreenReaderEnabled(isEnabled);
+      } catch (error) {
+        console.log('Error checking screen reader:', error);
+      }
+    };
+    
+    checkScreenReader();
+    
+    // Listener para cambios en el lector de pantalla
+    const subscription = AccessibilityInfo.addEventListener(
+      'screenReaderChanged',
+      setScreenReaderEnabled
+    );
+
+    return () => subscription?.remove();
+  }, []);
+
+  // Modal de accesibilidad ahora manejado globalmente
+
+  // Funciones de accesibilidad
+  const getAccessibleColors = () => {
+    if (highContrast) {
+      return {
+        background: ['#000000', '#1a1a1a', '#333333'],
+        inputBg: '#FFFFFF',
+        inputText: '#000000',
+        buttonBg: '#FFFFFF',
+        buttonText: '#000000',
+        labelText: '#FFFFFF'
+      };
+    }
+    if (colorBlindMode) {
+      return {
+        background: ['#4A90E2', '#7BB3F0', '#A8D5F2'], // Colores amigables para daltónicos
+        inputBg: '#E8F4FD',
+        inputText: '#2C5282',
+        buttonBg: '#2C5282',
+        buttonText: '#FFFFFF',
+        labelText: '#FFFFFF'
+      };
+    }
+    return {
+      background: ['#5BA9B8', '#87CEBD', '#B8D896'],
+      inputBg: '#6BCDDD',
+      inputText: 'white',
+      buttonBg: '#5BA9D0',
+      buttonText: 'white',
+      labelText: 'white'
+    };
+  };
+
+  const getFontSize = () => {
+    switch (fontSize) {
+      case 'small': return { base: 14, title: 20, button: 16, label: 12 };
+      case 'large': return { base: 20, title: 32, button: 24, label: 18 };
+      default: return { base: 16, title: 24, button: 20, label: 14 };
+    }
   };
 
   const colors = getAccessibleColors();
@@ -403,6 +517,142 @@ export default function RegisterScreen() {
       </Modal>
 
       {/* Modal de accesibilidad ahora manejado globalmente */}
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { minHeight: 400 }]}>
+            <Text style={[styles.modalTitle, { fontSize: fontSizes.title }]}>Opciones de Accesibilidad</Text>
+            
+            {/* Alto contraste */}
+            <TouchableOpacity
+              style={[styles.accessibilityOption, highContrast && styles.selectedOption]}
+              onPress={() => {
+                setHighContrast(!highContrast);
+                speakText(highContrast ? "Alto contraste desactivado" : "Alto contraste activado");
+              }}
+              accessibilityLabel={`Alto contraste: ${highContrast ? 'Activado' : 'Desactivado'}`}
+              accessibilityHint="Cambia a colores de alto contraste para mejor visibilidad"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: highContrast }}
+            >
+              <Ionicons name="contrast" size={24} color={highContrast ? "white" : "#333"} />
+              <Text style={[styles.accessibilityOptionText, { color: highContrast ? "white" : "#333" }]}>
+                Alto Contraste
+              </Text>
+              <Ionicons 
+                name={highContrast ? "checkmark-circle" : "ellipse-outline"} 
+                size={24} 
+                color={highContrast ? "white" : "#333"} 
+              />
+            </TouchableOpacity>
+
+            {/* Modo daltónico */}
+            <TouchableOpacity
+              style={[styles.accessibilityOption, colorBlindMode && styles.selectedOption]}
+              onPress={() => {
+                setColorBlindMode(!colorBlindMode);
+                speakText(colorBlindMode ? "Modo daltónico desactivado" : "Modo daltónico activado");
+              }}
+              accessibilityLabel={`Modo daltónico: ${colorBlindMode ? 'Activado' : 'Desactivado'}`}
+              accessibilityHint="Activa colores amigables para personas con daltonismo"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: colorBlindMode }}
+            >
+              <Ionicons name="eye" size={24} color={colorBlindMode ? "white" : "#333"} />
+              <Text style={[styles.accessibilityOptionText, { color: colorBlindMode ? "white" : "#333" }]}>
+                Modo Daltónico
+              </Text>
+              <Ionicons 
+                name={colorBlindMode ? "checkmark-circle" : "ellipse-outline"} 
+                size={24} 
+                color={colorBlindMode ? "white" : "#333"} 
+              />
+            </TouchableOpacity>
+
+            {/* Lector de pantalla */}
+            <TouchableOpacity
+              style={[styles.accessibilityOption, screenReaderEnabled && styles.selectedOption]}
+              onPress={() => {
+                const newState = !screenReaderEnabled;
+                setScreenReaderEnabled(newState);
+                if (newState) {
+                  Speech.speak("Lector de pantalla activado. Los elementos serán leídos en voz alta.");
+                } else {
+                  Speech.speak("Lector de pantalla desactivado");
+                }
+              }}
+              accessibilityLabel={`Lector de pantalla: ${screenReaderEnabled ? 'Activado' : 'Desactivado'}`}
+              accessibilityHint="Activa la lectura en voz alta de los elementos de la pantalla"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: screenReaderEnabled }}
+            >
+              <Ionicons name="volume-high" size={24} color={screenReaderEnabled ? "white" : "#333"} />
+              <Text style={[styles.accessibilityOptionText, { color: screenReaderEnabled ? "white" : "#333" }]}>
+                Lector de Pantalla
+              </Text>
+              <Ionicons 
+                name={screenReaderEnabled ? "checkmark-circle" : "ellipse-outline"} 
+                size={24} 
+                color={screenReaderEnabled ? "white" : "#333"} 
+              />
+            </TouchableOpacity>
+
+            {/* Tamaño de fuente */}
+            <View style={styles.fontSizeContainer}>
+              <Text style={[styles.accessibilityLabel, { fontSize: fontSizes.base }]}>Tamaño de Texto:</Text>
+              <View style={styles.fontSizeButtons}>
+                {['small', 'normal', 'large'].map((size) => (
+                  <TouchableOpacity
+                    key={size}
+                    style={[
+                      styles.fontSizeButton, 
+                      fontSize === size && styles.selectedFontButton
+                    ]}
+                    onPress={() => setFontSize(size)}
+                    accessibilityLabel={`Tamaño de texto: ${size === 'small' ? 'Pequeño' : size === 'normal' ? 'Normal' : 'Grande'}`}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: fontSize === size }}
+                  >
+                    <Text style={[
+                      styles.fontSizeButtonText, 
+                      fontSize === size && styles.selectedFontButtonText,
+                      { fontSize: size === 'small' ? 12 : size === 'large' ? 20 : 16 }
+                    ]}>
+                      {size === 'small' ? 'A' : size === 'normal' ? 'A' : 'A'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => {
+                // Modal cerrado automáticamente por el sistema global
+                speakText("Menú de accesibilidad cerrado");
+              }}
+              accessibilityLabel="Cerrar menú de accesibilidad"
+              accessibilityRole="button"
+            >
+              <Text style={styles.cancelButtonText}>Cerrar</Text>
+            </TouchableOpacity>
+
+            {/* Botón para detener la voz */}
+            {screenReaderEnabled && (
+              <TouchableOpacity
+                style={[styles.accessibilityOption, { backgroundColor: '#ff6b6b' }]}
+                onPress={() => Speech.stop()}
+                accessibilityLabel="Detener lectura en voz alta"
+                accessibilityHint="Detiene la lectura actual del lector de pantalla"
+                accessibilityRole="button"
+              >
+                <Ionicons name="stop" size={24} color="white" />
+                <Text style={[styles.accessibilityOptionText, { color: 'white' }]}>
+                  Detener Voz
+                </Text>
+                <Ionicons name="stop-circle" size={24} color="white" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
     </LinearGradient>
   );
@@ -681,5 +931,78 @@ const styles = StyleSheet.create({
   cancelButtonText: {
     color: '#666',
     fontSize: 16,
+  },
+  // Estilos de accesibilidad
+  accessibilityButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 50,
+    height: 50,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  accessibilityOption: {
+    width: '100%',
+    padding: 15,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 10,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectedOption: {
+    backgroundColor: '#4A90E2',
+  },
+  accessibilityOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+    marginLeft: 15,
+  },
+  accessibilityLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  fontSizeContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  fontSizeButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  fontSizeButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  selectedFontButton: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#2C5AA0',
+  },
+  fontSizeButtonText: {
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  selectedFontButtonText: {
+    color: 'white',
   },
 });
