@@ -1,14 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
-import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { auth } from '../../config/firebase';
 import Header from '../../components/Header';
 import { useAccessibility } from '../../contexts/AccessibilityContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { getUserStats, type ActivityProgress } from '../../services/database';
 
 export default function HomeScreen() {
-  const [completedActivities, setCompletedActivities] = useState(3);
+  const [completedActivities, setCompletedActivities] = useState(0);
+  const [progressPercentage, setProgressPercentage] = useState(0);
+  const [userActivities, setUserActivities] = useState<ActivityProgress[]>([]);
+  const [loading, setLoading] = useState(true);
   const totalActivities = 12;
   
   // Contexto de accesibilidad y idioma
@@ -18,52 +23,55 @@ export default function HomeScreen() {
   const colors = getAccessibleColors();
   const fontSizes = getFontSize();
 
-  const activities = [
-    { 
-      id: 1, 
-      name: currentTexts.geoSopa, 
-      icon: '🌍', 
-      completed: true,
-      category: 'geography'
-    },
-    { 
-      id: 2, 
-      name: currentTexts.puntoGo, 
-      icon: '🎯', 
-      completed: true,
-      category: 'logic'
-    },
-    { 
-      id: 3, 
-      name: currentTexts.matematico, 
-      icon: '🔢', 
-      completed: true,
-      category: 'math'
-    },
-    { 
-      id: 4, 
-      name: 'Actividad 4', 
-      icon: '📚', 
-      completed: false,
-      category: 'reading'
-    },
-    { 
-      id: 5, 
-      name: 'Actividad 5', 
-      icon: '🎨', 
-      completed: false,
-      category: 'art'
-    },
-    { 
-      id: 6, 
-      name: 'Actividad 6', 
-      icon: '🔬', 
-      completed: false,
-      category: 'science'
-    }
+  // Definición de todas las actividades de la app
+  const allActivities = [
+    { id: 'geosopa', name: currentTexts.geoSopa, icon: '🌍', category: 'geography' },
+    { id: 'puntogo', name: currentTexts.puntoGo, icon: '🎯', category: 'logic' },
+    { id: 'matematico', name: currentTexts.matematico, icon: '🔢', category: 'math' },
+    { id: 'activity4', name: 'Actividad 4', icon: '📚', category: 'reading' },
+    { id: 'activity5', name: 'Actividad 5', icon: '🎨', category: 'art' },
+    { id: 'activity6', name: 'Actividad 6', icon: '🔬', category: 'science' },
+    { id: 'activity7', name: 'Actividad 7', icon: '🎵', category: 'music' },
+    { id: 'activity8', name: 'Actividad 8', icon: '⚽', category: 'sports' },
+    { id: 'activity9', name: 'Actividad 9', icon: '🌳', category: 'nature' },
+    { id: 'activity10', name: 'Actividad 10', icon: '💡', category: 'creativity' },
+    { id: 'activity11', name: 'Actividad 11', icon: '🚀', category: 'technology' },
+    { id: 'activity12', name: 'Actividad 12', icon: '🏆', category: 'challenge' }
   ];
 
-  const progressPercentage = (completedActivities / totalActivities) * 100;
+  // Cargar progreso del usuario
+  useEffect(() => {
+    loadUserProgress();
+  }, []);
+
+  const loadUserProgress = async () => {
+    try {
+      setLoading(true);
+      const user = auth.currentUser;
+      
+      if (user) {
+        const stats = await getUserStats(user.uid);
+        setCompletedActivities(stats.completedActivities);
+        setProgressPercentage(stats.progress);
+        setUserActivities(stats.activities);
+      }
+    } catch (error) {
+      console.error('Error loading user progress:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Verificar si una actividad está completada
+  const isActivityCompleted = (activityId: string): boolean => {
+    return userActivities.some(a => a.activityId === activityId && a.completed);
+  };
+
+  // Combinar actividades con su estado de completado
+  const activities = allActivities.map(activity => ({
+    ...activity,
+    completed: isActivityCompleted(activity.id)
+  }));
 
   const handleActivityPress = (activity: any) => {
     speakText(`Actividad ${activity.name} ${activity.completed ? 'completada' : 'disponible'}`);
@@ -116,6 +124,27 @@ export default function HomeScreen() {
       </View>
     </TouchableOpacity>
   );
+
+  if (loading) {
+    return (
+      <LinearGradient
+        colors={colors.background as [string, string, string]}
+        style={styles.container}
+      >
+        <SafeAreaView style={styles.safeArea}>
+          <Header
+            title="KidiQuo"
+            showLanguageToggle={true}
+            showProfile={true}
+          />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>Cargando tu progreso...</Text>
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient
@@ -200,6 +229,16 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 16,
+    marginTop: 10,
   },
   content: {
     flex: 1,

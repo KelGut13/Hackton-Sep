@@ -168,10 +168,150 @@ export const getLessonsByDifficulty = async (difficulty: 'easy' | 'medium' | 'ha
   }
 };
 
-// ==================== PROGRESO ====================
+// ==================== PROGRESO Y ACTIVIDADES ====================
+
+export interface ActivityProgress {
+  id?: string;
+  userId: string;
+  activityId: string;
+  activityName: string;
+  completed: boolean;
+  score?: number;
+  attempts: number;
+  completedAt?: Date;
+  updatedAt: Date;
+}
 
 /**
- * Guardar progreso del usuario
+ * Guardar/Actualizar progreso de actividad
+ */
+export const saveActivityProgress = async (
+  userId: string,
+  activityId: string,
+  activityName: string,
+  completed: boolean,
+  score?: number
+): Promise<void> => {
+  try {
+    // Buscar si ya existe un progreso para esta actividad
+    const q = query(
+      collection(db, 'activityProgress'),
+      where('userId', '==', userId),
+      where('activityId', '==', activityId)
+    );
+    const querySnapshot = await getDocs(q);
+
+    if (!querySnapshot.empty) {
+      // Actualizar progreso existente
+      const docRef = querySnapshot.docs[0].ref;
+      const existingData = querySnapshot.docs[0].data();
+      
+      await updateDoc(docRef, {
+        completed,
+        score: score !== undefined ? score : existingData.score,
+        attempts: (existingData.attempts || 0) + 1,
+        completedAt: completed ? new Date() : existingData.completedAt,
+        updatedAt: new Date()
+      });
+    } else {
+      // Crear nuevo registro de progreso
+      await addDoc(collection(db, 'activityProgress'), {
+        userId,
+        activityId,
+        activityName,
+        completed,
+        score: score || 0,
+        attempts: 1,
+        completedAt: completed ? new Date() : null,
+        updatedAt: new Date()
+      });
+    }
+
+    // Actualizar progreso general del usuario
+    await updateUserProgress(userId);
+  } catch (error) {
+    console.error('Error saving activity progress:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener progreso de actividades del usuario
+ */
+export const getUserActivityProgress = async (userId: string): Promise<ActivityProgress[]> => {
+  try {
+    const q = query(
+      collection(db, 'activityProgress'),
+      where('userId', '==', userId)
+    );
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      completedAt: doc.data().completedAt?.toDate(),
+      updatedAt: doc.data().updatedAt?.toDate()
+    })) as ActivityProgress[];
+  } catch (error) {
+    console.error('Error getting user activity progress:', error);
+    throw error;
+  }
+};
+
+/**
+ * Actualizar progreso general del usuario (porcentaje)
+ */
+const updateUserProgress = async (userId: string): Promise<void> => {
+  try {
+    const activities = await getUserActivityProgress(userId);
+    const completedCount = activities.filter(a => a.completed).length;
+    const totalActivities = 12; // Total de actividades en la app
+    const progressPercentage = Math.round((completedCount / totalActivities) * 100);
+
+    await setDoc(doc(db, 'users', userId), {
+      progress: progressPercentage,
+      completedActivities: completedCount,
+      totalActivities: totalActivities,
+      lastActivityAt: new Date()
+    }, { merge: true });
+  } catch (error) {
+    console.error('Error updating user progress:', error);
+  }
+};
+
+/**
+ * Obtener estadísticas del usuario
+ */
+export const getUserStats = async (userId: string): Promise<{
+  completedActivities: number;
+  totalActivities: number;
+  progress: number;
+  activities: ActivityProgress[];
+}> => {
+  try {
+    const activities = await getUserActivityProgress(userId);
+    const completedCount = activities.filter(a => a.completed).length;
+    const totalActivities = 12;
+    const progress = Math.round((completedCount / totalActivities) * 100);
+
+    return {
+      completedActivities: completedCount,
+      totalActivities,
+      progress,
+      activities
+    };
+  } catch (error) {
+    console.error('Error getting user stats:', error);
+    return {
+      completedActivities: 0,
+      totalActivities: 12,
+      progress: 0,
+      activities: []
+    };
+  }
+};
+
+/**
+ * Guardar progreso del usuario (legacy - mantener por compatibilidad)
  */
 export const saveProgress = async (userId: string, lessonId: string, progress: number): Promise<void> => {
   try {
@@ -188,7 +328,7 @@ export const saveProgress = async (userId: string, lessonId: string, progress: n
 };
 
 /**
- * Obtener progreso del usuario
+ * Obtener progreso del usuario (legacy - mantener por compatibilidad)
  */
 export const getUserProgress = async (userId: string): Promise<any[]> => {
   try {
