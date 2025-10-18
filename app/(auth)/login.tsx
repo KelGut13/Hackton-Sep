@@ -62,7 +62,10 @@ export default function LoginScreen() {
 
     } catch (error: any) {
       setLoading(false);
-      console.error('Error en login:', error);
+      // Log discreto solo en desarrollo
+      if (__DEV__) {
+        console.log('⚠️ Login fallido:', error.code || 'error desconocido');
+      }
 
       let errorMessage = 'Hubo un error al iniciar sesión';
       let errorTitle = 'Error de Login';
