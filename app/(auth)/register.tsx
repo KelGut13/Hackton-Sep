@@ -212,7 +212,7 @@ export default function RegisterScreen() {
                 fontSize: fontSizes.base 
               }]}
               placeholder="Nombre Completo"
-              placeholderTextColor={highContrast ? "#666666" : "#A8D5E2"}
+              placeholderTextColor={highContrast ? "#666666" : "#FFFFFF"}
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
@@ -230,7 +230,7 @@ export default function RegisterScreen() {
                 fontSize: fontSizes.base 
               }]}
               placeholder="Correo Electronico"
-              placeholderTextColor={highContrast ? "#666666" : "#A8D5E2"}
+              placeholderTextColor={highContrast ? "#666666" : "#FFFFFF"}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -249,7 +249,7 @@ export default function RegisterScreen() {
                   fontSize: fontSizes.base 
                 }]}
                 placeholder="Contraseña"
-                placeholderTextColor={highContrast ? "#666666" : "#A8D5E2"}
+                placeholderTextColor={highContrast ? "#666666" : "#FFFFFF"}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}

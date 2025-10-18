@@ -10,7 +10,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const { getAccessibleColors, getFontSize, speakText } = useAccessibility();
+  const { getAccessibleColors, getFontSize, speakText, highContrast } = useAccessibility();
   const colors = getAccessibleColors();
   const fontSizes = getFontSize();
 
@@ -88,7 +88,7 @@ export default function LoginScreen() {
               fontSize: fontSizes.base 
             }]}
             placeholder="Correo Electronico"
-            placeholderTextColor="#A8D5E2"
+            placeholderTextColor={highContrast ? "#666666" : "#FFFFFF"}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -107,7 +107,7 @@ export default function LoginScreen() {
                 fontSize: fontSizes.base 
               }]}
               placeholder="Contraseña"
-              placeholderTextColor="#A8D5E2"
+              placeholderTextColor={highContrast ? "#666666" : "#FFFFFF"}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
