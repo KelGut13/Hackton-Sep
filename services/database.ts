@@ -1,25 +1,39 @@
-import { 
-  collection, 
-  doc, 
-  getDoc, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit
+import {
+    addDoc,
+    collection,
+    doc,
+    getDoc,
+    getDocs,
+    orderBy,
+    query,
+    updateDoc,
+    where
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
 // Tipos de ejemplo para tu base de datos
 export interface User {
-  id: string;
+  id?: string;
   name: string;
   email: string;
   createdAt: Date;
   progress?: number;
+  roleId?: string; // ID del rol en la colección 'roles'
+  accessibilityPreferences?: {
+    highContrast?: boolean;
+    colorBlindMode?: boolean;
+    fontSize?: string;
+    screenReaderEnabled?: boolean;
+  };
+}
+
+export interface Role {
+  id?: string;
+  name: string;        // Nombre del rol (ej: 'Alumno', 'Maestro')
+  value: string;       // Valor interno (ej: 'student', 'teacher')
+  description?: string; // Descripción opcional del rol
+  permissions?: string[]; // Permisos asociados al rol
+  createdAt: Date;
 }
 
 export interface Lesson {
@@ -184,6 +198,97 @@ export const getUserProgress = async (userId: string): Promise<any[]> => {
     }));
   } catch (error) {
     console.error('Error getting user progress:', error);
+    throw error;
+  }
+};
+
+// ==================== ROLES ====================
+
+/**
+ * Obtener todos los roles disponibles
+ */
+export const getRoles = async (): Promise<Role[]> => {
+  try {
+    const querySnapshot = await getDocs(collection(db, 'roles'));
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Role[];
+  } catch (error) {
+    console.error('Error getting roles:', error);
+    throw error;
+  }
+};
+
+/**
+ * Obtener un rol por ID
+ */
+export const getRole = async (roleId: string): Promise<Role | null> => {
+  try {
+    const roleDoc = await getDoc(doc(db, 'roles', roleId));
+    if (roleDoc.exists()) {
+      return { id: roleDoc.id, ...roleDoc.data() } as Role;
+    }
+    return null;
+  } catch (error) {
+    console.error('Error getting role:', error);
+    throw error;
+  }
+};
+
+/**
+ * Crear un nuevo rol (solo para administradores)
+ */
+export const createRole = async (roleData: Omit<Role, 'id'>): Promise<string> => {
+  try {
+    const docRef = await addDoc(collection(db, 'roles'), {
+      ...roleData,
+      createdAt: new Date()
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error creating role:', error);
+    throw error;
+  }
+};
+
+/**
+ * Inicializar roles por defecto (ejecutar una sola vez)
+ */
+export const initializeDefaultRoles = async (): Promise<void> => {
+  try {
+    // Verificar si ya existen roles
+    const existingRoles = await getRoles();
+    if (existingRoles.length > 0) {
+      console.log('Los roles ya están inicializados');
+      return;
+    }
+
+    // Crear roles por defecto
+    const defaultRoles = [
+      {
+        name: 'Alumno',
+        value: 'student',
+        description: 'Usuario que realiza actividades y aprende',
+        permissions: ['view_lessons', 'complete_activities', 'view_progress'],
+        createdAt: new Date()
+      },
+      {
+        name: 'Maestro',
+        value: 'teacher',
+        description: 'Usuario que crea y gestiona lecciones',
+        permissions: ['view_lessons', 'create_lessons', 'edit_lessons', 'view_student_progress'],
+        createdAt: new Date()
+      }
+    ];
+
+    for (const role of defaultRoles) {
+      await createRole(role);
+    }
+
+    console.log('Roles inicializados correctamente');
+  } catch (error) {
+    console.error('Error initializing default roles:', error);
     throw error;
   }
 };

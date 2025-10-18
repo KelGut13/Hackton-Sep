@@ -1,10 +1,10 @@
 import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  User,
-  UserCredential
+    createUserWithEmailAndPassword,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    signOut,
+    User,
+    UserCredential
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { createUser } from './database';
